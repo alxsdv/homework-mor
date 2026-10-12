@@ -33,6 +33,7 @@
         <testcontainers-jooq-codegen-plugin.version>1.0.0</testcontainers-jooq-codegen-plugin.version>
         <errorprone.version>2.50.0</errorprone.version>
         <nullaway.version>0.14.2</nullaway.version>
+        <archunit.version>1.5.1</archunit.version>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>25</maven.compiler.source>

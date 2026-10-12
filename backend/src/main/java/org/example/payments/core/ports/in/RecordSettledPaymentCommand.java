@@ -23,10 +23,22 @@ public record RecordSettledPaymentCommand(
     /** payments.tax_rate is numeric(9,6). */
     private static final int MAX_RATE_DECIMALS = 6;
     private static final Set<String> ISO_COUNTRIES = Set.of(Locale.getISOCountries());
+    /** Longer values overflow the btree entry of the (merchant_id, external_id) unique index. */
+    private static final int MAX_EXTERNAL_ID_LENGTH = 255;
+    /** Within Postgres timestamptz range, which ends in year 294276. */
+    private static final Instant MIN_SETTLED_AT = Instant.parse("0001-01-01T00:00:00Z");
+    private static final Instant MAX_SETTLED_AT = Instant.parse("+10000-01-01T00:00:00Z");
 
     public RecordSettledPaymentCommand {
         requireNotBlank(externalId, "externalId");
         requireNotBlank(merchantId, "merchantId");
+        if (externalId.length() > MAX_EXTERNAL_ID_LENGTH) {
+            throw new InvalidPaymentException("externalId must be at most " + MAX_EXTERNAL_ID_LENGTH
+                                              + " characters, got " + externalId.length());
+        }
+        if (settledAt.isBefore(MIN_SETTLED_AT) || !settledAt.isBefore(MAX_SETTLED_AT)) {
+            throw new InvalidPaymentException("settledAt must be between years 0001 and 9999: " + settledAt);
+        }
         // Postgres timestamptz stores microseconds; truncating here makes a resent value equal the stored one.
         settledAt = settledAt.truncatedTo(ChronoUnit.MICROS);
 

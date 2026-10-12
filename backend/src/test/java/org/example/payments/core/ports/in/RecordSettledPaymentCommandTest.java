@@ -80,4 +80,29 @@ class RecordSettledPaymentCommandTest {
                 .isInstanceOf(InvalidPaymentException.class)
                 .hasMessageContaining("merchantId must not be blank");
     }
+
+    @Test
+    void limitsExternalIdLength() {
+        String longest = "E".repeat(255);
+        assertThat(command(longest, "MERCH-001", "2026-09-30T21:30:00Z", "EUR", "1.00", "0.19", "DE").externalId())
+                .isEqualTo(longest);
+        assertThatThrownBy(() -> command(longest + "E", "MERCH-001", "2026-09-30T21:30:00Z", "EUR", "1.00", "0.19", "DE"))
+                .isInstanceOf(InvalidPaymentException.class)
+                .hasMessageContaining("externalId must be at most 255 characters");
+    }
+
+    @ParameterizedTest(name = "accepts settledAt {0}")
+    @CsvSource({"0001-01-01T00:00:00Z", "9999-12-31T23:59:59.999999Z"})
+    void acceptsSettledAtAtTheYearBounds(String settledAt) {
+        assertThat(command("EXT-1", "MERCH-001", settledAt, "EUR", "1.00", "0.19", "DE").settledAt())
+                .isEqualTo(Instant.parse(settledAt));
+    }
+
+    @ParameterizedTest(name = "rejects settledAt {0}")
+    @CsvSource({"0000-12-31T23:59:59.999999Z", "+10000-01-01T00:00:00Z", "+300000-01-01T00:00:00Z"})
+    void rejectsSettledAtOutsideTheYearBounds(String settledAt) {
+        assertThatThrownBy(() -> command("EXT-1", "MERCH-001", settledAt, "EUR", "1.00", "0.19", "DE"))
+                .isInstanceOf(InvalidPaymentException.class)
+                .hasMessageContaining("settledAt must be between years 0001 and 9999");
+    }
 }

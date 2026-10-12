@@ -13,11 +13,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -117,7 +119,9 @@ class PaymentsApiIT extends IntegrationTestBase {
                 Arguments.of("lowercase country", withContact(valid, "countryCode", "de"), "ISO 3166-1 alpha-2"),
                 Arguments.of("unknown country", withContact(valid, "countryCode", "XX"), "ISO 3166-1 alpha-2"),
                 Arguments.of("settledAt without offset", with(valid, "settledAt", "2026-09-30T23:30:00"), "settledAt must be an ISO-8601 timestamp with an offset"),
+                Arguments.of("settledAt beyond Postgres range", with(valid, "settledAt", "+300000-01-01T00:00:00Z"), "settledAt must be between years 0001 and 9999"),
                 Arguments.of("blank merchantId", with(valid, "merchantId", "  "), "merchantId must not be blank"),
+                Arguments.of("externalId too long", with(valid, "externalId", Stream.generate(() -> UUID.randomUUID().toString()).limit(600).collect(Collectors.joining())), "externalId must be at most 255 characters"),
                 Arguments.of("missing externalId", with(valid, "externalId", null), "externalId is required"),
                 Arguments.of("missing customer", with(valid, "customer", null), "customer is required"),
                 Arguments.of("missing countryCode", withContact(valid, "countryCode", null), "customer.billingContact.countryCode is required"),
