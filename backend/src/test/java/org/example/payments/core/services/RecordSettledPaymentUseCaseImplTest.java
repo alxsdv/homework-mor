@@ -19,8 +19,9 @@ class RecordSettledPaymentUseCaseImplTest {
     private final FakePaymentsRepository payments = new FakePaymentsRepository();
     private final FakeMerchantsRepository merchants =
             new FakeMerchantsRepository(Map.of("MERCH-001", new BigDecimal("0.03")));
+    private final FakeSettlementLedger ledger = new FakeSettlementLedger();
     private final RecordSettledPaymentUseCaseImpl useCase =
-            new RecordSettledPaymentUseCaseImpl(payments, merchants, new DirectTransactionRunner());
+            new RecordSettledPaymentUseCaseImpl(payments, merchants, ledger, new DirectTransactionRunner());
 
     @Test
     void recordsNewPaymentWithCalculatedAmounts() {
@@ -132,5 +133,45 @@ class RecordSettledPaymentUseCaseImplTest {
         assertThatThrownBy(() -> useCase.recordSettledPayment(command("EXT-1")))
                 .isInstanceOf(DuplicatePaymentIdException.class);
         assertThat(payments.addCalls).isEqualTo(3);
+    }
+
+    @Test
+    void postsNewPaymentToTheLedgerOnce() {
+        Payment payment = useCase.recordSettledPayment(command("EXT-1"));
+
+        assertThat(ledger.recorded).containsExactly(payment);
+    }
+
+    @Test
+    void doesNotPostARepeatAgain() {
+        useCase.recordSettledPayment(command("EXT-1"));
+        useCase.recordSettledPayment(command("EXT-1"));
+
+        assertThat(ledger.recorded).hasSize(1);
+    }
+
+    @Test
+    void doesNotPostConflictsOrUnknownMerchants() {
+        useCase.recordSettledPayment(command("EXT-1"));
+        ledger.recorded.clear();
+
+        assertThatThrownBy(() -> useCase.recordSettledPayment(
+                command("EXT-1", "MERCH-001", "1.00", "EUR", "2026-09-30T21:30:00Z")))
+                .isInstanceOf(PaymentConflictException.class);
+        assertThatThrownBy(() -> useCase.recordSettledPayment(
+                command("EXT-2", "MERCH-999", "1.00", "EUR", "2026-09-30T21:30:00Z")))
+                .isInstanceOf(UnknownMerchantException.class);
+
+        assertThat(ledger.recorded).isEmpty();
+    }
+
+    @Test
+    void doesNotPostWhenAConcurrentRequestWon() {
+        payments.failNextAddBecauseConcurrentRequestWon();
+
+        useCase.recordSettledPayment(command("EXT-1"));
+
+        // The winning request posted its own settlement.
+        assertThat(ledger.recorded).isEmpty();
     }
 }

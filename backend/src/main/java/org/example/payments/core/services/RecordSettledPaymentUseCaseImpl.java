@@ -12,6 +12,7 @@ import org.example.payments.core.ports.out.DuplicateExternalIdException;
 import org.example.payments.core.ports.out.DuplicatePaymentIdException;
 import org.example.payments.core.ports.out.MerchantsRepository;
 import org.example.payments.core.ports.out.PaymentsRepository;
+import org.example.payments.core.ports.out.SettlementLedger;
 import org.example.shared.transactions.TransactionRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,13 +26,16 @@ public class RecordSettledPaymentUseCaseImpl implements RecordSettledPaymentUseC
     private final Logger logger = LoggerFactory.getLogger(RecordSettledPaymentUseCaseImpl.class);
     private final PaymentsRepository paymentsRepository;
     private final MerchantsRepository merchantsRepository;
+    private final SettlementLedger settlementLedger;
     private final TransactionRunner transactionRunner;
 
     public RecordSettledPaymentUseCaseImpl(PaymentsRepository paymentsRepository,
                                            MerchantsRepository merchantsRepository,
+                                           SettlementLedger settlementLedger,
                                            TransactionRunner transactionRunner) {
         this.paymentsRepository = paymentsRepository;
         this.merchantsRepository = merchantsRepository;
+        this.settlementLedger = settlementLedger;
         this.transactionRunner = transactionRunner;
     }
 
@@ -88,6 +92,10 @@ public class RecordSettledPaymentUseCaseImpl implements RecordSettledPaymentUseC
 
         Merchant merchant = merchantsRepository.findById(command.merchantId())
                 .orElseThrow(() -> new UnknownMerchantException(command.merchantId()));
-        return paymentsRepository.addPayment(createPayment(paymentsRepository.nextId(), command, merchant));
+        Payment payment =
+                paymentsRepository.addPayment(createPayment(paymentsRepository.nextId(), command, merchant));
+        // Last step on purpose: the merchant-account lock taken here is held until commit.
+        settlementLedger.recordSettlement(payment);
+        return payment;
     }
 }
