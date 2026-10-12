@@ -52,7 +52,6 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -72,6 +71,11 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers-junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>testcontainers-postgresql</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -143,7 +147,7 @@
                                         <inputSchema>public</inputSchema>
                                     </database>
                                     <target>
-                                        <packageName>com.wychwd.jbookshelf.domain.jooq</packageName>
+                                        <packageName>org.example.jooq</packageName>
                                         <directory>target/generated-sources/jooq</directory>
                                     </target>
                                 </generator>
@@ -200,6 +204,7 @@
                         <phase>integration-test</phase>
                         <goals>
                             <goal>integration-test</goal>
+                            <goal>verify</goal>
                         </goals>
                     </execution>
                 </executions>
