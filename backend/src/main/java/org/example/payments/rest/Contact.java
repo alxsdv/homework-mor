@@ -1,8 +1,10 @@
 package org.example.payments.rest;
 
+import org.jspecify.annotations.Nullable;
+
 public record Contact(
         String addressLine1,
-        String addressLine2,
+        @Nullable String addressLine2,
         String countryCode,
         String postalCode) {
 

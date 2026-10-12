@@ -14,6 +14,10 @@
 
     <dependencies>
         <dependency>
+            <groupId>org.jspecify</groupId>
+            <artifactId>jspecify</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
@@ -84,36 +88,36 @@
             <!-- Plugin homepage: https://github.com/sivalabs/testcontainers-jooq-codegen-maven-plugin -->
             <!-- See also: https://github.com/testcontainers/testcontainers-jooq-codegen-maven-plugin/pull/53 -->
             <plugin>
-            <groupId>dev.sivalabs</groupId>
-            <artifactId>testcontainers-jooq-codegen-maven-plugin</artifactId>
-            <version>1.0.0</version>
-            <dependencies>
-                <dependency>
-                    <groupId>org.testcontainers</groupId>
-                    <artifactId>testcontainers-postgresql</artifactId>
-                    <version>${testcontainers.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.postgresql</groupId>
-                    <artifactId>postgresql</artifactId>
-                    <version>${postgresql.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.jooq</groupId>
-                    <artifactId>jooq-codegen</artifactId>
-                    <version>${jooq.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.jooq</groupId>
-                    <artifactId>jooq-meta</artifactId>
-                    <version>${jooq.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.jooq</groupId>
-                    <artifactId>jooq</artifactId>
-                    <version>${jooq.version}</version>
-                </dependency>
-            </dependencies>
+                <groupId>dev.sivalabs</groupId>
+                <artifactId>testcontainers-jooq-codegen-maven-plugin</artifactId>
+                <version>1.0.0</version>
+                <dependencies>
+                    <dependency>
+                        <groupId>org.testcontainers</groupId>
+                        <artifactId>testcontainers-postgresql</artifactId>
+                        <version>${testcontainers.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.postgresql</groupId>
+                        <artifactId>postgresql</artifactId>
+                        <version>${postgresql.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.jooq</groupId>
+                        <artifactId>jooq-codegen</artifactId>
+                        <version>${jooq.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.jooq</groupId>
+                        <artifactId>jooq-meta</artifactId>
+                        <version>${jooq.version}</version>
+                    </dependency>
+                    <dependency>
+                        <groupId>org.jooq</groupId>
+                        <artifactId>jooq</artifactId>
+                        <version>${jooq.version}</version>
+                    </dependency>
+                </dependencies>
                 <executions>
                     <execution>
                         <id>generate-jooq-sources</id>
@@ -151,6 +155,37 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>default-compile</id>
+                        <configuration>
+                            <compilerArgs>
+                                <arg>-XDcompilePolicy=simple</arg>
+                                <arg>--should-stop=ifError=FLOW</arg>
+                                <arg>-Xplugin:ErrorProne -XepDisableAllChecks -Xep:NullAway:ERROR
+                                    -XepOpt:NullAway:OnlyNullMarked=true -XepOpt:NullAway:JSpecifyMode=true
+                                    -XepExcludedPaths:.*/generated-sources/.*
+                                </arg>
+                            </compilerArgs>
+                            <annotationProcessorPaths>
+                                <path>
+                                    <groupId>com.google.errorprone</groupId>
+                                    <artifactId>error_prone_core</artifactId>
+                                    <version>${errorprone.version}</version>
+                                </path>
+                                <path>
+                                    <groupId>com.uber.nullaway</groupId>
+                                    <artifactId>nullaway</artifactId>
+                                    <version>${nullaway.version}</version>
+                                </path>
+                            </annotationProcessorPaths>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <!--  https://docs.spring.io/spring-boot/docs/current/maven-plugin/reference/htmlsingle/#integration-tests.no-starter-parent  -->
             <plugin>
