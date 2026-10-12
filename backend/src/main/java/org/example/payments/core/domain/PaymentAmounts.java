@@ -5,7 +5,7 @@ import java.math.RoundingMode;
 import java.util.Currency;
 
 /**
- * How a settled payment's total splits into tax, our fee and the merchant's share (spec §4).
+ * How a settled payment's total splits into tax, our fee and the merchant's share.
  * Every amount has the currency's number of decimal places; rounding remainders go to the merchant,
  * so {@code taxAmount + feeAmount + merchantAmount == totalAmount} always holds.
  */

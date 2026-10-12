@@ -1,6 +1,7 @@
 package org.example.payments.config;
 
 import org.example.payments.core.ports.in.RecordSettledPaymentUseCase;
+import org.example.payments.core.ports.out.MerchantsRepository;
 import org.example.payments.core.ports.out.PaymentsRepository;
 import org.example.payments.core.ports.out.TransactionRunner;
 import org.example.payments.core.services.RecordSettledPaymentUseCaseImpl;
@@ -12,7 +13,8 @@ public class PaymentsConfig {
 
     @Bean
     RecordSettledPaymentUseCase recordSettledPaymentUseCase(PaymentsRepository paymentsRepository,
+                                                            MerchantsRepository merchantsRepository,
                                                             TransactionRunner transactionRunner) {
-        return new RecordSettledPaymentUseCaseImpl(paymentsRepository, transactionRunner);
+        return new RecordSettledPaymentUseCaseImpl(paymentsRepository, merchantsRepository, transactionRunner);
     }
 }
