@@ -1,6 +1,6 @@
 package org.example.payments.core.services;
 
-import org.example.payments.core.ports.out.TransactionRunner;
+import org.example.shared.transactions.TransactionRunner;
 
 import java.util.function.Supplier;
 

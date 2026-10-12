@@ -1,11 +1,11 @@
-package org.example.payments.adapters.out;
+package org.example.shared.transactions;
 
-import org.example.payments.core.ports.out.TransactionRunner;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.function.Supplier;
 
+/** TransactionTemplate's default propagation is REQUIRED: join an existing transaction, or start one. */
 @Component
 public class SpringTransactionRunner implements TransactionRunner {
 

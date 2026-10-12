@@ -12,7 +12,7 @@ import org.example.payments.core.ports.out.DuplicateExternalIdException;
 import org.example.payments.core.ports.out.DuplicatePaymentIdException;
 import org.example.payments.core.ports.out.MerchantsRepository;
 import org.example.payments.core.ports.out.PaymentsRepository;
-import org.example.payments.core.ports.out.TransactionRunner;
+import org.example.shared.transactions.TransactionRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
