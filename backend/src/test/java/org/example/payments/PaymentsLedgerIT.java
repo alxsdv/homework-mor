@@ -19,9 +19,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.example.jooq.Tables.LEDGER_ACCOUNTS;
 import static org.example.jooq.Tables.LEDGER_ENTRIES;
 import static org.example.jooq.Tables.LEDGER_TRANSACTIONS;
-import static org.example.payments.PaymentRequests.payment;
-import static org.example.payments.PaymentRequests.post;
-import static org.example.payments.PaymentRequests.validPayment;
+import static org.example.PaymentRequests.payment;
+import static org.example.PaymentRequests.post;
+import static org.example.PaymentRequests.validPayment;
 
 class PaymentsLedgerIT extends IntegrationTestBase {
 

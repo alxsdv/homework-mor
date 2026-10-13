@@ -24,10 +24,10 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.example.jooq.Tables.PAYMENTS;
-import static org.example.payments.PaymentRequests.post;
-import static org.example.payments.PaymentRequests.validPayment;
-import static org.example.payments.PaymentRequests.with;
-import static org.example.payments.PaymentRequests.withContact;
+import static org.example.PaymentRequests.post;
+import static org.example.PaymentRequests.validPayment;
+import static org.example.PaymentRequests.with;
+import static org.example.PaymentRequests.withContact;
 
 class PaymentsApiIT extends IntegrationTestBase {
 

@@ -16,8 +16,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.example.payments.PaymentRequests.payment;
-import static org.example.payments.PaymentRequests.post;
+import static org.example.PaymentRequests.payment;
+import static org.example.PaymentRequests.post;
 
 /**
  * Reference scenario. MERCH-001 is "merchant A" (3% fee), MERCH-002 is "merchant B" (5% fee).

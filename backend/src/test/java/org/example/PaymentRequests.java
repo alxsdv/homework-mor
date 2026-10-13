@@ -1,4 +1,4 @@
-package org.example.payments;
+package org.example;
 
 import org.jspecify.annotations.Nullable;
 import org.springframework.core.ParameterizedTypeReference;

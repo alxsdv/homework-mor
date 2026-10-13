@@ -8,8 +8,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.example.jooq.Tables.PAYMENTS;
-import static org.example.payments.PaymentRequests.post;
-import static org.example.payments.PaymentRequests.validPayment;
+import static org.example.PaymentRequests.post;
+import static org.example.PaymentRequests.validPayment;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 

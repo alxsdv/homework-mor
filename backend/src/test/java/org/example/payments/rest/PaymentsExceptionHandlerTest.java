@@ -1,6 +1,6 @@
 package org.example.payments.rest;
 
-import org.example.payments.PaymentRequests;
+import org.example.PaymentRequests;
 import org.example.payments.core.domain.PaymentId;
 import org.example.payments.core.ports.in.RecordSettledPaymentUseCase;
 import org.example.payments.core.ports.out.DuplicateExternalIdException;
