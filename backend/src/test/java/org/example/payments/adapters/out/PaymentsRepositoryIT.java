@@ -90,6 +90,20 @@ class PaymentsRepositoryIT extends IntegrationTestBase {
     }
 
     @Test
+    void findsPaymentByIdForUpdate() {
+        Payment payment = eurPayment("PAY-0000000001", "EXT-1", "Wohnung 4");
+        paymentsRepository.addPayment(payment);
+
+        // Outside a transaction the lock lasts only for the statement; the use case calls it inside one.
+        assertThat(paymentsRepository.findByIdForUpdate(new PaymentId("PAY-0000000001")))
+                .hasValueSatisfying(found -> assertThat(found)
+                        .usingRecursiveComparison()
+                        .withComparatorForType(BigDecimal::compareTo, BigDecimal.class)
+                        .isEqualTo(payment));
+        assertThat(paymentsRepository.findByIdForUpdate(new PaymentId("PAY-0000000002"))).isEmpty();
+    }
+
+    @Test
     void reportsDuplicatePublicId() {
         paymentsRepository.addPayment(eurPayment("PAY-0000000001", "EXT-1", null));
 

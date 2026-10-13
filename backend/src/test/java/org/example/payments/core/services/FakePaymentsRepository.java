@@ -36,6 +36,13 @@ class FakePaymentsRepository implements PaymentsRepository {
     }
 
     @Override
+    public Optional<Payment> findByIdForUpdate(PaymentId paymentId) {
+        return byMerchantAndExternalId.values().stream()
+                .filter(payment -> payment.paymentId().equals(paymentId))
+                .findFirst();
+    }
+
+    @Override
     public Payment addPayment(Payment payment) {
         addCalls++;
         Function<Payment, RuntimeException> failure = addFailures.poll();

@@ -53,6 +53,16 @@ public class PaymentsRepositoryImpl implements PaymentsRepository {
     }
 
     @Override
+    public Optional<Payment> findByIdForUpdate(PaymentId paymentId) {
+        logger.info("Locking payment {}", paymentId.value());
+        return dsl.selectFrom(PAYMENTS)
+                .where(PAYMENTS.PUBLIC_ID.eq(paymentId.value()))
+                .forUpdate()
+                .fetchOptional()
+                .map(PaymentsRepositoryImpl::toDomain);
+    }
+
+    @Override
     public Payment addPayment(Payment payment) {
         logger.info("Adding new payment {} for merchant ID {}", payment.paymentId().value(), payment.merchantId());
         Customer customer = payment.customer();
