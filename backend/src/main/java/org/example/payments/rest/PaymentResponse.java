@@ -2,9 +2,10 @@ package org.example.payments.rest;
 
 import org.example.payments.core.domain.Payment;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.format.DateTimeFormatter;
+
+import static org.example.payments.rest.ResponseFields.money;
+import static org.example.payments.rest.ResponseFields.rate;
 
 /** 201 body for POST /payments: amounts as strings, settledAt in UTC. */
 public record PaymentResponse(
@@ -38,14 +39,5 @@ public record PaymentResponse(
                 money(payment.merchantAmount(), digits),
                 payment.taxCountry(),
                 Customer.fromDomain(payment.customer()));
-    }
-
-    private static String money(BigDecimal amount, int digits) {
-        return amount.setScale(digits, RoundingMode.UNNECESSARY).toPlainString();
-    }
-
-    /** numeric(9,6) comes back as 0.190000; show 0.19. */
-    private static String rate(BigDecimal rate) {
-        return rate.stripTrailingZeros().toPlainString();
     }
 }

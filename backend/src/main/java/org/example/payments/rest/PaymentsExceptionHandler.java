@@ -2,9 +2,14 @@ package org.example.payments.rest;
 
 import org.example.payments.core.ports.in.InvalidPaymentException;
 import org.example.payments.core.ports.in.PaymentConflictException;
+import org.example.payments.core.ports.in.PaymentNotFoundException;
+import org.example.payments.core.ports.in.RefundConflictException;
+import org.example.payments.core.ports.in.RefundExceedsRefundableException;
 import org.example.payments.core.ports.in.UnknownMerchantException;
 import org.example.payments.core.ports.out.DuplicateExternalIdException;
 import org.example.payments.core.ports.out.DuplicatePaymentIdException;
+import org.example.payments.core.ports.out.DuplicateRefundExternalIdException;
+import org.example.payments.core.ports.out.DuplicateRefundIdException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
@@ -16,7 +21,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.util.Objects;
 
-/** Maps the payment use case's exceptions to ProblemDetail responses for PaymentsController. */
+/** Maps the payment and refund use cases' exceptions to ProblemDetail responses for PaymentsController. */
 @RestControllerAdvice(assignableTypes = PaymentsController.class)
 public class PaymentsExceptionHandler {
 
@@ -27,27 +32,43 @@ public class PaymentsExceptionHandler {
         return ResponseEntity.status(status).body(ProblemDetail.forStatusAndDetail(status, detail));
     }
 
-    @ExceptionHandler({InvalidPaymentException.class, UnknownMerchantException.class})
-    public ResponseEntity<ProblemDetail> handleBadRequest(RuntimeException e) {
-        logger.info("Rejected payment request: {}", e.getMessage());
-        return problem(HttpStatus.BAD_REQUEST, e);
-    }
-
-    @ExceptionHandler(PaymentConflictException.class)
-    public ResponseEntity<ProblemDetail> handleConflict(PaymentConflictException e) {
-        logger.info("Conflicting payment request: {}", e.getMessage());
-        return problem(HttpStatus.CONFLICT, e);
-    }
-
-    /** Payment IDs are random, so another attempt from the client can succeed. */
-    @ExceptionHandler(DuplicatePaymentIdException.class)
-    public ResponseEntity<ProblemDetail> handleDuplicatePaymentId(DuplicatePaymentIdException e) {
-        logger.warn("Could not generate a unique payment ID, last attempt: {}", e.paymentId().value());
-        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
-                HttpStatus.SERVICE_UNAVAILABLE, "Could not record the payment, please retry the request.");
+    /** An id collision is random, so another attempt from the client can succeed. */
+    private static ResponseEntity<ProblemDetail> retryLater(String detail) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, detail);
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                              .header(HttpHeaders.RETRY_AFTER, "1")
                              .body(problem);
+    }
+
+    @ExceptionHandler({InvalidPaymentException.class, UnknownMerchantException.class})
+    public ResponseEntity<ProblemDetail> handleBadRequest(RuntimeException e) {
+        logger.info("Rejected request: {}", e.getMessage());
+        return problem(HttpStatus.BAD_REQUEST, e);
+    }
+
+    @ExceptionHandler(PaymentNotFoundException.class)
+    public ResponseEntity<ProblemDetail> handleNotFound(PaymentNotFoundException e) {
+        logger.info("{}", e.getMessage());
+        return problem(HttpStatus.NOT_FOUND, e);
+    }
+
+    @ExceptionHandler({PaymentConflictException.class, RefundConflictException.class,
+                       RefundExceedsRefundableException.class})
+    public ResponseEntity<ProblemDetail> handleConflict(RuntimeException e) {
+        logger.info("Conflicting request: {}", e.getMessage());
+        return problem(HttpStatus.CONFLICT, e);
+    }
+
+    @ExceptionHandler(DuplicatePaymentIdException.class)
+    public ResponseEntity<ProblemDetail> handleDuplicatePaymentId(DuplicatePaymentIdException e) {
+        logger.warn("Could not generate a unique payment ID, last attempt: {}", e.paymentId().value());
+        return retryLater("Could not record the payment, please retry the request.");
+    }
+
+    @ExceptionHandler(DuplicateRefundIdException.class)
+    public ResponseEntity<ProblemDetail> handleDuplicateRefundId(DuplicateRefundIdException e) {
+        logger.warn("Could not generate a unique refund ID, last attempt: {}", e.refundId().value());
+        return retryLater("Could not record the refund, please retry the request.");
     }
 
     /**
@@ -60,6 +81,16 @@ public class PaymentsExceptionHandler {
                      + "but the payment lookup does not find it", e.externalId(), e.merchantId());
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.INTERNAL_SERVER_ERROR, "Could not record the payment.");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problem);
+    }
+
+    /** As for payments: the retry should have found the concurrent refund, so this is a server defect. */
+    @ExceptionHandler(DuplicateRefundExternalIdException.class)
+    public ResponseEntity<ProblemDetail> handleDuplicateRefundExternalId(DuplicateRefundExternalIdException e) {
+        logger.error("Unique violation on refund external ID {} for merchant {} persisted after retries, "
+                     + "but the refund lookup does not find it", e.externalId(), e.merchantId());
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.INTERNAL_SERVER_ERROR, "Could not record the refund.");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(problem);
     }
 }

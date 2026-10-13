@@ -75,4 +75,43 @@ public final class PaymentRequests {
                 .onStatus(HttpStatusCode::isError, (request, response) -> { /* let the test assert on it */ })
                 .toEntity(new ParameterizedTypeReference<>() {});
     }
+
+    /** JSON body for POST /payments/{paymentId}/refund; a null refundAmount leaves the field out (a full refund). */
+    public static Map<String, Object> refund(String externalId, String refundedAt, @Nullable String refundAmount) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("externalId", externalId);
+        body.put("refundedAt", refundedAt);
+        if (refundAmount != null) {
+            body.put("refundAmount", refundAmount);
+        }
+        return body;
+    }
+
+    public static ResponseEntity<Map<String, Object>> postRefund(RestClient http, String paymentId,
+                                                                 Map<String, Object> body) {
+        return http.post()
+                .uri("/payments/{paymentId}/refund", paymentId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, (request, response) -> { /* let the test assert on it */ })
+                .toEntity(new ParameterizedTypeReference<>() {});
+    }
+
+    /** Records a payment that must succeed, and returns its paymentId. */
+    public static String recordPayment(RestClient http, Map<String, Object> body) {
+        return (String) created(post(http, body)).get("paymentId");
+    }
+
+    /** Records a refund that must succeed, and returns its 201 body. */
+    public static Map<String, Object> recordRefund(RestClient http, String paymentId, Map<String, Object> body) {
+        return created(postRefund(http, paymentId, body));
+    }
+
+    private static Map<String, Object> created(ResponseEntity<Map<String, Object>> response) {
+        if (response.getStatusCode().value() != 201 || response.getBody() == null) {
+            throw new IllegalStateException("Expected 201 Created, got " + response);
+        }
+        return response.getBody();
+    }
 }
