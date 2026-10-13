@@ -23,7 +23,13 @@ record TaxPeriod(LocalDate from, LocalDate to, ZoneId zone) {
             throw new InvalidTaxPeriodException(
                     "from (" + fromDate + ") must be before to (" + toDate + "); to is exclusive");
         }
-        return new TaxPeriod(fromDate, toDate, zoneId);
+        TaxPeriod period = new TaxPeriod(fromDate, toDate, zoneId);
+        // A zone that skipped whole days maps both dates to one instant, leaving a period with nothing in it.
+        if (!period.start().isBefore(period.end())) {
+            throw new InvalidTaxPeriodException(
+                    "from (" + fromDate + ") to (" + toDate + ") covers no time in " + zoneId.getId());
+        }
+        return period;
     }
 
     /** atStartOfDay, not atTime(00:00): on a day whose midnight a DST change skips, it picks the first instant. */

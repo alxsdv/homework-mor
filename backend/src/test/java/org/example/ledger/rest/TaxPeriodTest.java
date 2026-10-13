@@ -56,6 +56,15 @@ class TaxPeriodTest {
     }
 
     @Test
+    void periodOfOnlyASkippedDayIsRejected() {
+        // Samoa skipped 2011-12-30 when it moved across the date line, so this period has no instants in it.
+        assertThatThrownBy(() -> TaxPeriod.parse("2011-12-30", "2011-12-31", "Pacific/Apia"))
+                .isInstanceOf(InvalidTaxPeriodException.class)
+                .hasMessageContaining("Pacific/Apia")
+                .hasMessageContaining("no time");
+    }
+
+    @Test
     void fromIsRequired() {
         assertThatThrownBy(() -> TaxPeriod.parse(null, "2026-10-01", null))
                 .isInstanceOf(InvalidTaxPeriodException.class)
