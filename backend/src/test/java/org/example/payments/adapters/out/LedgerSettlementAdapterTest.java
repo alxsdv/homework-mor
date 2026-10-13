@@ -7,6 +7,8 @@ import org.example.payments.core.domain.Contact;
 import org.example.payments.core.domain.Customer;
 import org.example.payments.core.domain.Payment;
 import org.example.payments.core.domain.PaymentId;
+import org.example.payments.core.domain.Refund;
+import org.example.payments.core.domain.RefundId;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -54,5 +56,39 @@ class LedgerSettlementAdapterTest {
 
         assertThat(transaction.entries()).hasSize(4)
                 .contains(new LedgerEntry(AccountKey.taxPayable(EUR, "US"), new BigDecimal("-0.00")));
+    }
+
+    private static Refund refund(String taxCountry, String total, String tax, String net, String fee,
+                                 String merchant) {
+        return new Refund(new RefundId("REF-0000000001"), new PaymentId("PAY-0000000001"), "MERCH-001", "RE-1",
+                          Instant.parse("2026-10-02T08:15:00Z"), false, taxCountry, EUR, new BigDecimal("0.19"),
+                          new BigDecimal("0.03"), new BigDecimal(total), new BigDecimal(tax), new BigDecimal(net),
+                          new BigDecimal(fee), new BigDecimal(merchant));
+    }
+
+    @Test
+    void mapsRefundToTheSettlementsLinesReversed() {
+        Refund refund = refund("DE", "59.50", "9.50", "50.00", "1.50", "48.50");
+
+        LedgerTransaction transaction = LedgerSettlementAdapter.toLedgerTransaction(refund);
+
+        assertThat(transaction.type()).isEqualTo("PAYMENT_REFUNDED");
+        assertThat(transaction.sourceType()).isEqualTo("refund");
+        assertThat(transaction.sourceId()).isEqualTo("REF-0000000001");
+        assertThat(transaction.effectiveAt()).isEqualTo(refund.refundedAt());
+        assertThat(transaction.entries()).containsExactly(
+                new LedgerEntry(AccountKey.cashClearing(EUR), new BigDecimal("-59.50")),
+                new LedgerEntry(AccountKey.taxPayable(EUR, "DE"), new BigDecimal("9.50")),
+                new LedgerEntry(AccountKey.feeRevenue(EUR), new BigDecimal("1.50")),
+                new LedgerEntry(AccountKey.merchantPayable(EUR, "MERCH-001"), new BigDecimal("48.50")));
+    }
+
+    @Test
+    void zeroTaxRefundStillPostsATaxLine() {
+        LedgerTransaction transaction = LedgerSettlementAdapter.toLedgerTransaction(
+                refund("US", "40.00", "0.00", "40.00", "1.20", "38.80"));
+
+        assertThat(transaction.entries()).hasSize(4)
+                .contains(new LedgerEntry(AccountKey.taxPayable(EUR, "US"), new BigDecimal("0.00")));
     }
 }
