@@ -3,6 +3,7 @@ package org.example.payments.core.services;
 import org.example.payments.core.domain.Payment;
 import org.example.payments.core.ports.in.PaymentConflictException;
 import org.example.payments.core.ports.in.UnknownMerchantException;
+import org.example.payments.core.ports.out.DuplicateExternalIdException;
 import org.example.payments.core.ports.out.DuplicatePaymentIdException;
 import org.junit.jupiter.api.Test;
 
@@ -133,6 +134,19 @@ class RecordSettledPaymentUseCaseImplTest {
         assertThatThrownBy(() -> useCase.recordSettledPayment(command("EXT-1")))
                 .isInstanceOf(DuplicatePaymentIdException.class);
         assertThat(payments.addCalls).isEqualTo(3);
+    }
+
+    @Test
+    void givesUpAfterThreeExternalIdCollisions() {
+        payments.failNextAddWithExternalIdCollision();
+        payments.failNextAddWithExternalIdCollision();
+        payments.failNextAddWithExternalIdCollision();
+
+        assertThatThrownBy(() -> useCase.recordSettledPayment(command("EXT-1")))
+                .isInstanceOf(DuplicateExternalIdException.class);
+        assertThat(payments.addCalls).isEqualTo(3);
+        assertThat(payments.stored()).isEmpty();
+        assertThat(ledger.recorded).isEmpty();
     }
 
     @Test

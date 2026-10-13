@@ -259,4 +259,41 @@ class RefundsApiIT extends IntegrationTestBase {
         }
         assertThat(dsl.fetchCount(REFUNDS)).isEqualTo(1);
     }
+
+    @Test
+    void concurrentSameExternalIdOnTwoPaymentsRecordsOneRefund() throws Exception {
+        // Locks on two different payments don't serialize these requests, so the losers reach the
+        // merchant + externalId unique key, retry and then find the winner's refund of another payment.
+        List<String> paymentIds = List.of(recordPayment(http, validPayment()),
+                                          recordPayment(http, with(validPayment(), "externalId", "EXT-2")));
+        int requests = 8;
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<ResponseEntity<Map<String, Object>>>> futures = new ArrayList<>();
+        try (ExecutorService pool = Executors.newFixedThreadPool(requests)) {
+            for (int i = 0; i < requests; i++) {
+                String paymentId = paymentIds.get(i % 2);
+                futures.add(pool.submit(() -> {
+                    start.await();
+                    return postRefund(http, paymentId, halfRefund());
+                }));
+            }
+            start.countDown();
+
+            Set<Object> refundIds = new HashSet<>();
+            int conflicts = 0;
+            for (Future<ResponseEntity<Map<String, Object>>> future : futures) {
+                ResponseEntity<Map<String, Object>> response = future.get(30, TimeUnit.SECONDS);
+                if (response.getStatusCode() == HttpStatus.CONFLICT) {
+                    conflicts++;
+                } else {
+                    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+                    refundIds.add(response.getBody().get("refundId"));
+                }
+            }
+            assertThat(refundIds).hasSize(1);
+            // Every request for the other payment is rejected.
+            assertThat(conflicts).isEqualTo(requests / 2);
+        }
+        assertThat(dsl.fetchCount(REFUNDS)).isEqualTo(1);
+    }
 }

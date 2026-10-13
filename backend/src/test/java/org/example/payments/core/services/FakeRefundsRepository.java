@@ -81,6 +81,14 @@ class FakeRefundsRepository implements RefundsRepository {
         });
     }
 
+    /**
+     * The next addRefund fails on the merchant + externalId unique key, but the conflicting refund
+     * stays invisible to the retry, as if each retry raced yet another concurrent request.
+     */
+    void failNextAddWithExternalIdCollision() {
+        addFailures.add(refund -> new DuplicateRefundExternalIdException(refund.merchantId(), refund.externalId()));
+    }
+
     List<Refund> stored() {
         return List.copyOf(refunds);
     }

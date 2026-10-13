@@ -70,6 +70,14 @@ class FakePaymentsRepository implements PaymentsRepository {
         });
     }
 
+    /**
+     * The next addPayment fails on the merchant + externalId unique key, but the conflicting payment
+     * stays invisible to the retry, as if each retry raced yet another concurrent request.
+     */
+    void failNextAddWithExternalIdCollision() {
+        addFailures.add(payment -> new DuplicateExternalIdException(payment.merchantId(), payment.externalId()));
+    }
+
     List<Payment> stored() {
         return List.copyOf(byMerchantAndExternalId.values());
     }

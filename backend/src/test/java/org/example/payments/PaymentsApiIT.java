@@ -164,4 +164,40 @@ class PaymentsApiIT extends IntegrationTestBase {
         }
         assertThat(dsl.fetchCount(PAYMENTS)).isEqualTo(1);
     }
+
+    @Test
+    void concurrentMismatchedRequestsRecordOnePayment() throws Exception {
+        // Two different payments under one externalId. When they overlap, the losers hit the merchant + externalId
+        // unique key, retry, find the winner's payment and see that it differs.
+        List<Map<String, Object>> bodies = List.of(validPayment(), with(validPayment(), "totalAmount", "120.00"));
+        int requests = 8;
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<ResponseEntity<Map<String, Object>>>> futures = new ArrayList<>();
+        try (ExecutorService pool = Executors.newFixedThreadPool(requests)) {
+            for (int i = 0; i < requests; i++) {
+                Map<String, Object> body = bodies.get(i % 2);
+                futures.add(pool.submit(() -> {
+                    start.await();
+                    return post(http, body);
+                }));
+            }
+            start.countDown();
+
+            Set<Object> paymentIds = new HashSet<>();
+            int conflicts = 0;
+            for (Future<ResponseEntity<Map<String, Object>>> future : futures) {
+                ResponseEntity<Map<String, Object>> response = future.get(30, TimeUnit.SECONDS);
+                if (response.getStatusCode() == HttpStatus.CONFLICT) {
+                    conflicts++;
+                } else {
+                    assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+                    paymentIds.add(response.getBody().get("paymentId"));
+                }
+            }
+            assertThat(paymentIds).hasSize(1);
+            // Every request with the other body is rejected.
+            assertThat(conflicts).isEqualTo(requests / 2);
+        }
+        assertThat(dsl.fetchCount(PAYMENTS)).isEqualTo(1);
+    }
 }

@@ -7,6 +7,7 @@ import org.example.payments.core.ports.in.PaymentNotFoundException;
 import org.example.payments.core.ports.in.RecordRefundCommand;
 import org.example.payments.core.ports.in.RefundConflictException;
 import org.example.payments.core.ports.in.RefundExceedsRefundableException;
+import org.example.payments.core.ports.out.DuplicateRefundExternalIdException;
 import org.example.payments.core.ports.out.DuplicateRefundIdException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -251,6 +252,19 @@ class RecordRefundUseCaseImplTest {
         assertThatThrownBy(() -> useCase.recordRefund(command("RE-1", "25.00")))
                 .isInstanceOf(DuplicateRefundIdException.class);
         assertThat(refunds.addCalls).isEqualTo(3);
+    }
+
+    @Test
+    void givesUpAfterThreeExternalIdCollisions() {
+        refunds.failNextAddWithExternalIdCollision();
+        refunds.failNextAddWithExternalIdCollision();
+        refunds.failNextAddWithExternalIdCollision();
+
+        assertThatThrownBy(() -> useCase.recordRefund(command("RE-1", "25.00")))
+                .isInstanceOf(DuplicateRefundExternalIdException.class);
+        assertThat(refunds.addCalls).isEqualTo(3);
+        assertThat(refunds.stored()).isEmpty();
+        assertThat(ledger.refunds).isEmpty();
     }
 
     @Test
