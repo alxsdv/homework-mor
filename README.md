@@ -1,0 +1,43 @@
+# Homework: The MoR Ledger Service
+
+## Tech Stack
+- Java 25
+- Spring Boot 4.1.0
+- Jooq
+- Flyway
+- Testcontainers
+- NullAway, JSpecify
+- ArchUnit
+
+## How to build & run locally
+
+```bash
+./mvnw clean install                 # build backend/target/homework-backend-*.jar
+docker compose up -d --build         # start Postgres + app (rebuilds the app image)
+docker compose logs -f app           # follow app logs; ready when "Started Application" appears
+docker compose ps                    # check both containers are up
+```
+
+```bash
+docker compose down                  # stop, keep the database
+docker compose down -v               # stop and wipe the database
+```
+
+## Testing the API
+
+Base URL: `http://localhost:8080`  
+Swagger UI: http://localhost:8080/swagger-ui.html
+
+The application exposes the following API methods:
+
+1. `POST /payments`: record a settled payment from the customer to a given merchant
+2. `POST /payments/{paymentId}/refund`: record a refund to a previously setlled payment, fully or partly
+3. `GET /merchants/{merchantId}/balances`: what are merchant's balances with the MoR (per currency)
+4. `GET /tax-statement`: how much does the MoR owe tax authorities (per country & currency)
+
+See the full API spec through the Swagger UI (^^)  
+More on the prepared scenarios for manual testing: [smoke-test-guide.md](smoke-test-guide.md)
+
+## Design
+
+Read the [Design Document](design.md) to know more about the task, as well as decisions and assumptions made.
