@@ -1,13 +1,19 @@
 package org.example.payments.rest;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.jspecify.annotations.Nullable;
 
+import static io.swagger.v3.oas.annotations.media.Schema.RequiredMode.REQUIRED;
 import static org.example.payments.rest.RequestFields.required;
 
 public record Customer(
+        @Schema(requiredMode = REQUIRED, example = "Erika")
         @Nullable String firstName,
+        @Schema(requiredMode = REQUIRED, example = "Mustermann")
         @Nullable String lastName,
+        @Schema(requiredMode = REQUIRED, example = "erika@example.com")
         @Nullable String email,
+        @Schema(requiredMode = REQUIRED)
         @Nullable Contact billingContact) {
 
     public org.example.payments.core.domain.Customer toDomain() {

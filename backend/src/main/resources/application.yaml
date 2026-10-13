@@ -9,3 +9,7 @@ spring:
       # Start only the database: the `app` service is the containerized version of this very application.
       start:
         arguments: postgres
+springdoc:
+  swagger-ui:
+    # Request forms open ready to edit, without pressing "Try it out" first.
+    try-it-out-enabled: true
