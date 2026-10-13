@@ -1,5 +1,0 @@
-spring:
-  docker:
-    compose:
-      # Keep the Postgres container running after the app stops, so the seeded data can be explored.
-      lifecycle-management: start-only
