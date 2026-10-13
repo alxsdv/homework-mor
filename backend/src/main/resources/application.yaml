@@ -6,3 +6,6 @@ spring:
       # The compose file lives in the repo root; `./mvnw -pl backend spring-boot:run` runs from backend/.
       # Tests skip docker compose and use Testcontainers instead.
       file: ../docker-compose.yaml
+      # Start only the database: the `app` service is the containerized version of this very application.
+      start:
+        arguments: postgres
