@@ -14,13 +14,17 @@ public record AccountKey(AccountType type, Currency currency, @Nullable String m
     public AccountKey {
         boolean needsMerchant = type == AccountType.MERCHANT_PAYABLE;
         boolean needsCountry = type == AccountType.TAX_PAYABLE;
-        if (needsMerchant != (merchantId != null)) {
-            throw new IllegalArgumentException(
-                    type + " account " + (needsMerchant ? "requires" : "must not have") + " a merchantId");
+        if (needsMerchant && merchantId == null) {
+            throw new IllegalArgumentException(type + " account requires a merchantId");
         }
-        if (needsCountry != (countryCode != null)) {
-            throw new IllegalArgumentException(
-                    type + " account " + (needsCountry ? "requires" : "must not have") + " a countryCode");
+        if (!needsMerchant && merchantId != null) {
+            throw new IllegalArgumentException(type + " account must not have a merchantId");
+        }
+        if (needsCountry && countryCode == null) {
+            throw new IllegalArgumentException(type + " account requires a countryCode");
+        }
+        if (!needsCountry && countryCode != null) {
+            throw new IllegalArgumentException(type + " account must not have a countryCode");
         }
     }
 

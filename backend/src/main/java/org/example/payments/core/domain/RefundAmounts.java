@@ -19,7 +19,7 @@ public record RefundAmounts(
 
     /** Nothing refunded yet, at the currency's scale. */
     public static RefundAmounts none(Currency currency) {
-        BigDecimal zero = BigDecimal.ZERO.setScale(currency.getDefaultFractionDigits());
+        BigDecimal zero = BigDecimal.ZERO.setScale(currency.getDefaultFractionDigits(), RoundingMode.UNNECESSARY);
         return new RefundAmounts(zero, zero, zero, zero, zero);
     }
 
