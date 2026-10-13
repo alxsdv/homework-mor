@@ -21,8 +21,8 @@ public class MerchantsRepositoryImpl implements MerchantsRepository {
     @Override
     public Optional<Merchant> findById(String merchantId) {
         return dsl.selectFrom(MERCHANTS)
-                .where(MERCHANTS.ID.eq(merchantId))
+                .where(MERCHANTS.PUBLIC_ID.eq(merchantId))
                 .fetchOptional()
-                .map(record -> new Merchant(record.getId(), record.getFeeRate()));
+                .map(record -> new Merchant(record.getPublicId(), record.getFeeRate()));
     }
 }

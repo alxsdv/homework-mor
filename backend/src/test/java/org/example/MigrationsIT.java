@@ -13,12 +13,38 @@ public class MigrationsIT extends IntegrationTestBase {
 
     @Test
     void seedMerchantsWithFeeRates() {
-        Map<String, BigDecimal> feeRates = dsl.selectFrom(MERCHANTS).fetchMap(MERCHANTS.ID, MERCHANTS.FEE_RATE);
+        Map<String, BigDecimal> feeRates = dsl.selectFrom(MERCHANTS).fetchMap(MERCHANTS.PUBLIC_ID, MERCHANTS.FEE_RATE);
 
         assertThat(feeRates).containsOnlyKeys("MERCH-001", "MERCH-002", "MERCH-003");
         assertThat(feeRates.get("MERCH-001")).isEqualByComparingTo("0.03");
         assertThat(feeRates.get("MERCH-002")).isEqualByComparingTo("0.05");
         assertThat(feeRates.get("MERCH-003")).isEqualByComparingTo("0.025");
+    }
+
+    @Test
+    void merchantsPublicIdIsUnique() {
+        List<String> names = dsl.fetch("""
+                        select conname from pg_constraint
+                        where conrelid = 'merchants'::regclass and contype = 'u'
+                        """)
+                .getValues(0, String.class);
+
+        assertThat(names).containsExactly("merchants_public_id_key");
+    }
+
+    @Test
+    void paymentsAndRefundsReferenceMerchantsByPublicId() {
+        List<String> references = dsl.fetch("""
+                        select c.conrelid::regclass || '.' || a.attname || ' -> ' || fa.attname
+                        from pg_constraint c
+                        join pg_attribute a on a.attrelid = c.conrelid and a.attnum = any (c.conkey)
+                        join pg_attribute fa on fa.attrelid = c.confrelid and fa.attnum = any (c.confkey)
+                        where c.contype = 'f' and c.confrelid = 'merchants'::regclass
+                        """)
+                .getValues(0, String.class);
+
+        assertThat(references).containsExactlyInAnyOrder(
+                "payments.merchant_id -> public_id", "refunds.merchant_id -> public_id");
     }
 
     @Test

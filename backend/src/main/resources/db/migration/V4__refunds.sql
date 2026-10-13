@@ -6,7 +6,7 @@ CREATE TABLE refunds
     id              bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     public_id       text           NOT NULL CONSTRAINT refunds_public_id_key UNIQUE,
     payment_id      text           NOT NULL REFERENCES payments (public_id),
-    merchant_id     text           NOT NULL REFERENCES merchants (id),
+    merchant_id     text           NOT NULL REFERENCES merchants (public_id),
     external_id     text           NOT NULL,
     refunded_at     timestamptz    NOT NULL,
     -- Requested without an amount; an idempotent repeat must also come without one.

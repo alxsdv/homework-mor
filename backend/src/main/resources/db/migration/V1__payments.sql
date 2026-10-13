@@ -1,14 +1,15 @@
 CREATE TABLE merchants
 (
-    id       text PRIMARY KEY,
-    fee_rate numeric(9, 6) NOT NULL CHECK (fee_rate >= 0 AND fee_rate < 1)
+    id        bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    public_id text          NOT NULL CONSTRAINT merchants_public_id_key UNIQUE,
+    fee_rate  numeric(9, 6) NOT NULL CHECK (fee_rate >= 0 AND fee_rate < 1)
 );
 
 CREATE TABLE payments
 (
     id                    bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     public_id             text           NOT NULL CONSTRAINT payments_public_id_key UNIQUE,
-    merchant_id           text           NOT NULL REFERENCES merchants (id),
+    merchant_id           text           NOT NULL REFERENCES merchants (public_id),
     external_id           text           NOT NULL,
     settled_at            timestamptz    NOT NULL,
     customer_first_name   text           NOT NULL,
