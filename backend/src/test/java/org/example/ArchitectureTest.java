@@ -93,11 +93,11 @@ class ArchitectureTest {
 
     @ArchTest
     static final ArchRule merchantsTouchesOnlyMerchantTables =
-            touchesOnlyItsOwnTables("merchants", "Ledger", "Payments");
+            touchesOnlyItsOwnTables("merchants", "Ledger", "Payments", "Refunds");
 
     @ArchTest
     static final ArchRule ledgerTouchesOnlyLedgerTables =
-            touchesOnlyItsOwnTables("ledger", "Payments", "Merchants");
+            touchesOnlyItsOwnTables("ledger", "Payments", "Merchants", "Refunds");
 
     @ArchTest
     static final ArchRule sharedDependsOnNoModule = noClasses()

@@ -32,4 +32,16 @@ public class MigrationsIT extends IntegrationTestBase {
         assertThat(names).containsExactlyInAnyOrder(
                 "payments_public_id_key", "payments_merchant_id_external_id_key");
     }
+
+    @Test
+    void refundsUniqueConstraintsHaveTheNamesTheAdapterMapsOn() {
+        List<String> names = dsl.fetch("""
+                        select conname from pg_constraint
+                        where conrelid = 'refunds'::regclass and contype = 'u'
+                        """)
+                .getValues(0, String.class);
+
+        assertThat(names).containsExactlyInAnyOrder(
+                "refunds_public_id_key", "refunds_merchant_id_external_id_key");
+    }
 }
