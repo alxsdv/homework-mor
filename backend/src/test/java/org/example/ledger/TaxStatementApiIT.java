@@ -14,7 +14,9 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.example.PaymentRequests.payment;
-import static org.example.PaymentRequests.post;
+import static org.example.PaymentRequests.recordPayment;
+import static org.example.PaymentRequests.recordRefund;
+import static org.example.PaymentRequests.refund;
 
 /** Reference scenario: P1–P4 settle in Q3 (UTC), P5 exactly at the start of Q4 (UTC). */
 class TaxStatementApiIT extends IntegrationTestBase {
@@ -27,10 +29,20 @@ class TaxStatementApiIT extends IntegrationTestBase {
             payment("EXT-P4", "MERCH-002", "DE", "EUR", "238.00", "0.19", "2026-10-01T01:30:00+02:00"),
             payment("EXT-P5", "MERCH-002", "DE", "EUR", "119.00", "0.19", "2026-10-01T00:00:00Z"));
 
-    private void recordP1ToP5() {
-        for (Map<String, Object> body : P1_TO_P5) {
-            assertThat(post(http, body).getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        }
+    /** Records P1–P5 and returns their payment ids, in order. */
+    private List<String> recordP1ToP5() {
+        return P1_TO_P5.stream().map(body -> recordPayment(http, body)).toList();
+    }
+
+    /**
+     * P1–P5 plus three refunds. R1: half of P1 in Q3 (tax 9.50). R2: all of P2 in Q4 (tax 24.00).
+     * R3: half of P4 (tax 19.00) at 23:45 UTC on 30 September, which is Q3 in UTC and already Q4 in Berlin.
+     */
+    private void recordP1ToP5WithRefunds() {
+        List<String> ids = recordP1ToP5();
+        recordRefund(http, ids.get(0), refund("RE-1", "2026-08-10T10:00:00Z", "59.50"));
+        recordRefund(http, ids.get(1), refund("RE-2", "2026-10-05T10:00:00Z", null));
+        recordRefund(http, ids.get(3), refund("RE-3", "2026-09-30T23:45:00Z", "119.00"));
     }
 
     /** query is the raw query string, e.g. "?from=2026-07-01&to=2026-10-01"; keep it free of characters to encode. */
@@ -121,5 +133,50 @@ class TaxStatementApiIT extends IntegrationTestBase {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat((String) response.getBody().get("detail")).startsWith("from ");
+    }
+
+    @Test
+    void thirdQuarterInUtcWithRefunds() {
+        recordP1ToP5WithRefunds();
+
+        // DE: P1 19.00 + P4 38.00 − R1 9.50 − R3 19.00. GR is refunded in Q4, so Q3 still owes it.
+        assertThat(getTaxStatement("?from=2026-07-01&to=2026-10-01").getBody().get("statements"))
+                .isEqualTo(List.of(
+                        statement("DE", "EUR", "28.50"),
+                        statement("GR", "EUR", "24.00"),
+                        statement("US", "USD", "8.00")));
+    }
+
+    @Test
+    void thirdQuarterInBerlinWithRefunds() {
+        recordP1ToP5WithRefunds();
+
+        // DE: P1 19.00 − R1 9.50; P4 and R3 both fall into Q4 in Berlin.
+        assertThat(getTaxStatement("?from=2026-07-01&to=2026-10-01&zone=Europe/Berlin").getBody().get("statements"))
+                .isEqualTo(List.of(
+                        statement("DE", "EUR", "9.50"),
+                        statement("GR", "EUR", "24.00"),
+                        statement("US", "USD", "8.00")));
+    }
+
+    @Test
+    void fourthQuarterInBerlinWithRefunds() {
+        recordP1ToP5WithRefunds();
+
+        // DE: P4 38.00 + P5 19.00 − R3 19.00. GR: only R2, a refund of tax collected in Q3.
+        assertThat(getTaxStatement("?from=2026-10-01&to=2027-01-01&zone=Europe/Berlin").getBody().get("statements"))
+                .isEqualTo(List.of(
+                        statement("DE", "EUR", "38.00"),
+                        statement("GR", "EUR", "-24.00")));
+    }
+
+    @Test
+    void fourthQuarterInUtcWithRefunds() {
+        recordP1ToP5WithRefunds();
+
+        assertThat(getTaxStatement("?from=2026-10-01&to=2027-01-01").getBody().get("statements"))
+                .isEqualTo(List.of(
+                        statement("DE", "EUR", "19.00"),
+                        statement("GR", "EUR", "-24.00")));
     }
 }

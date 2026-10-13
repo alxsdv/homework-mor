@@ -12,7 +12,9 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.example.PaymentRequests.payment;
-import static org.example.PaymentRequests.post;
+import static org.example.PaymentRequests.recordPayment;
+import static org.example.PaymentRequests.recordRefund;
+import static org.example.PaymentRequests.refund;
 
 /** Reference scenario: MERCH-001 charges a 3% fee, MERCH-002 5%, MERCH-003 has no payments. */
 class MerchantBalancesApiIT extends IntegrationTestBase {
@@ -23,10 +25,9 @@ class MerchantBalancesApiIT extends IntegrationTestBase {
             payment("EXT-P3", "MERCH-001", "US", "USD", "108.00", "0.08", "2026-08-20T10:00:00Z"),
             payment("EXT-P4", "MERCH-002", "DE", "EUR", "238.00", "0.19", "2026-10-01T01:30:00+02:00"));
 
-    private void recordP1ToP4() {
-        for (Map<String, Object> body : P1_TO_P4) {
-            assertThat(post(http, body).getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        }
+    /** Records P1–P4 and returns their payment ids, in order. */
+    private List<String> recordP1ToP4() {
+        return P1_TO_P4.stream().map(body -> recordPayment(http, body)).toList();
     }
 
     private ResponseEntity<Map<String, Object>> getBalances(String merchantId) {
@@ -82,5 +83,34 @@ class MerchantBalancesApiIT extends IntegrationTestBase {
         recordP1ToP4();
 
         assertThat(getBalances("merch-001").getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void refundsReduceWhatWeOweTheMerchant() {
+        List<String> ids = recordP1ToP4();
+
+        // Half of P1 gives back 48.50 of its 97.00 merchant share; P3 is refunded in full.
+        recordRefund(http, ids.get(0), refund("RE-1", "2026-08-10T10:00:00Z", "59.50"));
+        recordRefund(http, ids.get(2), refund("RE-2", "2026-09-01T10:00:00Z", null));
+
+        assertThat(getBalances("MERCH-001").getBody().get("balances")).isEqualTo(List.of(
+                Map.of("currency", "EUR", "payable", "145.50"),
+                Map.of("currency", "USD", "payable", "0.00")));
+        assertThat(getBalances("MERCH-002").getBody().get("balances"))
+                .isEqualTo(List.of(Map.of("currency", "EUR", "payable", "190.00")));
+    }
+
+    @Test
+    void partialRefundsAddingUpToThePaymentLeaveNoRemainder() {
+        List<String> ids = recordP1ToP4();
+
+        recordRefund(http, ids.get(1), refund("RE-1", "2026-08-05T10:00:00Z", "31.00"));
+        Map<String, Object> rest = recordRefund(http, ids.get(1), refund("RE-2", "2026-08-06T10:00:00Z", null));
+
+        assertThat(rest).containsEntry("refundAmount", "93.00").containsEntry("merchantAmount", "72.75");
+        // P2's 97.00 merchant share is gone entirely (24.25 + 72.75); P1's 97.00 is left.
+        assertThat(getBalances("MERCH-001").getBody().get("balances")).isEqualTo(List.of(
+                Map.of("currency", "EUR", "payable", "97.00"),
+                Map.of("currency", "USD", "payable", "97.00")));
     }
 }
