@@ -33,6 +33,8 @@ public class OpenApiConfig {
                     ModelConverters.getInstance().read(ProblemDetail.class).get(name));
             // Jackson writes ProblemDetail.properties as top-level fields, not as a nested object.
             schema.getProperties().remove("properties");
+            // Jackson leaves out an unset type, and no handler sets one.
+            schema.getProperties().remove("type");
             openApi.getComponents().addSchemas(name, schema);
             Content problemDetail = new Content().addMediaType(
                     org.springframework.http.MediaType.APPLICATION_PROBLEM_JSON_VALUE,

@@ -12,6 +12,7 @@ import org.example.payments.core.ports.out.DuplicateRefundExternalIdException;
 import org.example.payments.core.ports.out.DuplicateRefundIdException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -23,6 +24,7 @@ import java.util.Objects;
 
 /** Maps the payment and refund use cases' exceptions to ProblemDetail responses for PaymentsController. */
 @RestControllerAdvice(assignableTypes = PaymentsController.class)
+@Order(0) // Before the catch-all ApiExceptionHandler.
 public class PaymentsExceptionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(PaymentsExceptionHandler.class);
@@ -42,20 +44,20 @@ public class PaymentsExceptionHandler {
 
     @ExceptionHandler({InvalidPaymentException.class, UnknownMerchantException.class})
     public ResponseEntity<ProblemDetail> handleBadRequest(RuntimeException e) {
-        logger.info("Rejected request: {}", e.getMessage());
+        logger.warn("Rejected request: {}", e.getMessage());
         return problem(HttpStatus.BAD_REQUEST, e);
     }
 
     @ExceptionHandler(PaymentNotFoundException.class)
     public ResponseEntity<ProblemDetail> handleNotFound(PaymentNotFoundException e) {
-        logger.info("{}", e.getMessage());
+        logger.warn("{}", e.getMessage());
         return problem(HttpStatus.NOT_FOUND, e);
     }
 
     @ExceptionHandler({PaymentConflictException.class, RefundConflictException.class,
                        RefundExceedsRefundableException.class})
     public ResponseEntity<ProblemDetail> handleConflict(RuntimeException e) {
-        logger.info("Conflicting request: {}", e.getMessage());
+        logger.warn("Conflicting request: {}", e.getMessage());
         return problem(HttpStatus.CONFLICT, e);
     }
 

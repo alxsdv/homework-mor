@@ -11,7 +11,11 @@ import org.example.payments.core.ports.out.DuplicateExternalIdException;
 import org.example.payments.core.ports.out.DuplicatePaymentIdException;
 import org.example.payments.core.ports.out.DuplicateRefundExternalIdException;
 import org.example.payments.core.ports.out.DuplicateRefundIdException;
+import org.example.shared.web.ApiExceptionHandler;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -21,7 +25,11 @@ import tools.jackson.databind.json.JsonMapper;
 
 import java.math.BigDecimal;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -30,6 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Mappings that need a use case to fail in a way a real request can't easily trigger. Of the retries exhausted
  * in the use cases, only an id collision is worth retrying from the client.
  */
+@ExtendWith(OutputCaptureExtension.class)
 class PaymentsExceptionHandlerTest {
 
     private static final RecordSettledPaymentUseCase NO_PAYMENTS = command -> {
@@ -43,7 +52,8 @@ class PaymentsExceptionHandlerTest {
 
     private static MockMvc mvc(RecordSettledPaymentUseCase payments, RecordRefundUseCase refunds) {
         return MockMvcBuilders.standaloneSetup(new PaymentsController(payments, refunds))
-                .setControllerAdvice(new PaymentsExceptionHandler())
+                // The catch-all goes first here, so the payments handlers winning proves the ordering.
+                .setControllerAdvice(new ApiExceptionHandler(), new PaymentsExceptionHandler())
                 .build();
     }
 
@@ -123,5 +133,27 @@ class PaymentsExceptionHandlerTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(header().doesNotExist(HttpHeaders.RETRY_AFTER))
                 .andExpect(jsonPath("$.detail").value("Could not record the refund."));
+    }
+
+    @Test
+    void unexpectedExceptionReturns500WithoutItsMessage(CapturedOutput output) throws Exception {
+        postPaymentWith(command -> {
+            throw new IllegalStateException("internal secret");
+        })
+                .andExpect(status().isInternalServerError())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.detail").value("Internal server error"))
+                .andExpect(content().string(not(containsString("internal secret"))));
+
+        assertThat(output.getOut()).contains("ERROR").contains("java.lang.IllegalStateException: internal secret");
+    }
+
+    @Test
+    void conflictIsLoggedAtWarn(CapturedOutput output) throws Exception {
+        postRefundWith("PAY-0000000001", command -> {
+            throw new RefundConflictException("MERCH-001", command.externalId());
+        });
+
+        assertThat(output.getOut()).containsPattern("WARN .*Conflicting request");
     }
 }

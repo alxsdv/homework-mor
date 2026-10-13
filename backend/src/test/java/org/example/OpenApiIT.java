@@ -49,8 +49,9 @@ class OpenApiIT extends IntegrationTestBase {
 
         assertThat(responses).containsKeys("400", "409", "503");
         assertThat(at(responses, "400", "content")).containsOnlyKeys("application/problem+json");
+        // Spring leaves type out of the JSON when it is not set, and no handler sets it.
         assertThat(at(spec, "components", "schemas", "ProblemDetail", "properties"))
-                .containsOnlyKeys("type", "title", "status", "detail", "instance");
+                .containsOnlyKeys("title", "status", "detail", "instance");
     }
 
     @Test

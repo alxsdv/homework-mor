@@ -8,8 +8,6 @@ import org.example.payments.core.domain.Payment;
 import org.example.payments.core.domain.Refund;
 import org.example.payments.core.ports.in.RecordRefundUseCase;
 import org.example.payments.core.ports.in.RecordSettledPaymentUseCase;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -21,8 +19,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @Tag(name = "Payments")
 public class PaymentsController {
-
-    private static final Logger logger = LoggerFactory.getLogger(PaymentsController.class);
 
     private final RecordSettledPaymentUseCase recordSettledPaymentUseCase;
     private final RecordRefundUseCase recordRefundUseCase;
@@ -45,7 +41,6 @@ public class PaymentsController {
     @ApiResponse(responseCode = "409", description = "The externalId is taken by a different payment")
     @ApiResponse(responseCode = "503", description = "Could not generate a unique payment ID; retry")
     public ResponseEntity<PaymentResponse> recordSettledPayment(@RequestBody PaymentRecord paymentRecord) {
-        logger.info("POST /payments: {}", paymentRecord);
         Payment payment = recordSettledPaymentUseCase.recordSettledPayment(paymentRecord.toCommand());
         return ResponseEntity.status(HttpStatus.CREATED).body(PaymentResponse.fromDomain(payment));
     }
@@ -67,7 +62,6 @@ public class PaymentsController {
             @Parameter(description = "As returned by POST /payments", example = "PAY-0123456789")
             @PathVariable("paymentId") String paymentId,
             @RequestBody RefundRecord refundRecord) {
-        logger.info("POST /payments/{}/refund: {}", paymentId, refundRecord);
         Refund refund = recordRefundUseCase.recordRefund(refundRecord.toCommand(paymentId));
         return ResponseEntity.status(HttpStatus.CREATED).body(RefundResponse.fromDomain(refund));
     }
