@@ -17,8 +17,8 @@ import static org.example.payments.core.services.TestCommands.command;
 class RecordSettledPaymentUseCaseImplTest {
 
     private final FakePaymentsRepository payments = new FakePaymentsRepository();
-    private final FakeMerchantsRepository merchants =
-            new FakeMerchantsRepository(Map.of("MERCH-001", new BigDecimal("0.03")));
+    private final FakeMerchantLookup merchants =
+            new FakeMerchantLookup(Map.of("MERCH-001", new BigDecimal("0.03")));
     private final FakeSettlementLedger ledger = new FakeSettlementLedger();
     private final RecordSettledPaymentUseCaseImpl useCase =
             new RecordSettledPaymentUseCaseImpl(payments, merchants, ledger, new DirectTransactionRunner());

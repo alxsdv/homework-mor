@@ -1,6 +1,6 @@
 package org.example.payments.core.ports.in;
 
-/** The merchantId doesn't exist in the merchants table. Maps to 400. */
+/** The merchantId isn't a known merchant. Maps to 400. */
 public class UnknownMerchantException extends RuntimeException {
 
     public UnknownMerchantException(String merchantId) {

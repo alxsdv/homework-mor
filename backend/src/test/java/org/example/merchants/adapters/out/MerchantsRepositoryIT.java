@@ -1,7 +1,7 @@
-package org.example.payments.adapters.out;
+package org.example.merchants.adapters.out;
 
 import org.example.IntegrationTestBase;
-import org.example.payments.core.ports.out.MerchantsRepository;
+import org.example.merchants.core.ports.out.MerchantsRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 

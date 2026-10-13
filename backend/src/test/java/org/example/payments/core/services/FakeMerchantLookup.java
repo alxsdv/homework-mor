@@ -1,17 +1,17 @@
 package org.example.payments.core.services;
 
 import org.example.payments.core.domain.Merchant;
-import org.example.payments.core.ports.out.MerchantsRepository;
+import org.example.payments.core.ports.out.MerchantLookup;
 
 import java.math.BigDecimal;
 import java.util.Map;
 import java.util.Optional;
 
-class FakeMerchantsRepository implements MerchantsRepository {
+class FakeMerchantLookup implements MerchantLookup {
 
     private final Map<String, BigDecimal> feeRates;
 
-    FakeMerchantsRepository(Map<String, BigDecimal> feeRates) {
+    FakeMerchantLookup(Map<String, BigDecimal> feeRates) {
         this.feeRates = feeRates;
     }
 

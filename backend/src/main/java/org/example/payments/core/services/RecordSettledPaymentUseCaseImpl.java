@@ -10,7 +10,7 @@ import org.example.payments.core.ports.in.RecordSettledPaymentUseCase;
 import org.example.payments.core.ports.in.UnknownMerchantException;
 import org.example.payments.core.ports.out.DuplicateExternalIdException;
 import org.example.payments.core.ports.out.DuplicatePaymentIdException;
-import org.example.payments.core.ports.out.MerchantsRepository;
+import org.example.payments.core.ports.out.MerchantLookup;
 import org.example.payments.core.ports.out.PaymentsRepository;
 import org.example.payments.core.ports.out.SettlementLedger;
 import org.example.shared.transactions.TransactionRunner;
@@ -25,16 +25,16 @@ public class RecordSettledPaymentUseCaseImpl implements RecordSettledPaymentUseC
 
     private final Logger logger = LoggerFactory.getLogger(RecordSettledPaymentUseCaseImpl.class);
     private final PaymentsRepository paymentsRepository;
-    private final MerchantsRepository merchantsRepository;
+    private final MerchantLookup merchantLookup;
     private final SettlementLedger settlementLedger;
     private final TransactionRunner transactionRunner;
 
     public RecordSettledPaymentUseCaseImpl(PaymentsRepository paymentsRepository,
-                                           MerchantsRepository merchantsRepository,
+                                           MerchantLookup merchantLookup,
                                            SettlementLedger settlementLedger,
                                            TransactionRunner transactionRunner) {
         this.paymentsRepository = paymentsRepository;
-        this.merchantsRepository = merchantsRepository;
+        this.merchantLookup = merchantLookup;
         this.settlementLedger = settlementLedger;
         this.transactionRunner = transactionRunner;
     }
@@ -90,7 +90,7 @@ public class RecordSettledPaymentUseCaseImpl implements RecordSettledPaymentUseC
             return existing.get();
         }
 
-        Merchant merchant = merchantsRepository.findById(command.merchantId())
+        Merchant merchant = merchantLookup.findById(command.merchantId())
                 .orElseThrow(() -> new UnknownMerchantException(command.merchantId()));
         Payment payment =
                 paymentsRepository.addPayment(createPayment(paymentsRepository.nextId(), command, merchant));

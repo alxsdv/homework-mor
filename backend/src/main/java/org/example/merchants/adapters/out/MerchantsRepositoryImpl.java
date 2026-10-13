@@ -1,7 +1,7 @@
-package org.example.payments.adapters.out;
+package org.example.merchants.adapters.out;
 
-import org.example.payments.core.domain.Merchant;
-import org.example.payments.core.ports.out.MerchantsRepository;
+import org.example.merchants.core.domain.Merchant;
+import org.example.merchants.core.ports.out.MerchantsRepository;
 import org.jooq.DSLContext;
 import org.springframework.stereotype.Repository;
 
