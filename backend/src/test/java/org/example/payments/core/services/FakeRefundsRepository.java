@@ -7,6 +7,7 @@ import org.example.payments.core.domain.RefundId;
 import org.example.payments.core.ports.out.DuplicateRefundExternalIdException;
 import org.example.payments.core.ports.out.DuplicateRefundIdException;
 import org.example.payments.core.ports.out.RefundsRepository;
+import org.jspecify.annotations.NullMarked;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -17,6 +18,7 @@ import java.util.Optional;
 import java.util.function.Function;
 
 /** In-memory RefundsRepository whose next addRefund calls can be scripted to fail. */
+@NullMarked
 class FakeRefundsRepository implements RefundsRepository {
 
     static final RefundId CONCURRENT_WINNER_ID = new RefundId("REF-9999999999");

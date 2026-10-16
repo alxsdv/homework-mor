@@ -5,6 +5,7 @@ import org.example.payments.core.domain.PaymentId;
 import org.example.payments.core.ports.out.DuplicateExternalIdException;
 import org.example.payments.core.ports.out.DuplicatePaymentIdException;
 import org.example.payments.core.ports.out.PaymentsRepository;
+import org.jspecify.annotations.NullMarked;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -15,6 +16,7 @@ import java.util.Optional;
 import java.util.function.Function;
 
 /** In-memory PaymentsRepository whose next addPayment calls can be scripted to fail. */
+@NullMarked
 class FakePaymentsRepository implements PaymentsRepository {
 
     static final PaymentId CONCURRENT_WINNER_ID = new PaymentId("PAY-9999999999");

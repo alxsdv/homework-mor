@@ -2,11 +2,13 @@ package org.example.payments.core.services;
 
 import org.example.payments.core.domain.Merchant;
 import org.example.payments.core.ports.out.MerchantLookup;
+import org.jspecify.annotations.NullMarked;
 
 import java.math.BigDecimal;
 import java.util.Map;
 import java.util.Optional;
 
+@NullMarked
 class FakeMerchantLookup implements MerchantLookup {
 
     private final Map<String, BigDecimal> feeRates;

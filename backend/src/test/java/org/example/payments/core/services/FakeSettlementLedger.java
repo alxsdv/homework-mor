@@ -3,10 +3,12 @@ package org.example.payments.core.services;
 import org.example.payments.core.domain.Payment;
 import org.example.payments.core.domain.Refund;
 import org.example.payments.core.ports.out.SettlementLedger;
+import org.jspecify.annotations.NullMarked;
 
 import java.util.ArrayList;
 import java.util.List;
 
+@NullMarked
 class FakeSettlementLedger implements SettlementLedger {
 
     final List<Payment> recorded = new ArrayList<>();
