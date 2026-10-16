@@ -98,75 +98,6 @@
 
     <build>
         <plugins>
-            <!-- https://testcontainers.com/guides/working-with-jooq-flyway-using-testcontainers/ -->
-            <!-- Plugin migrated to custom one, since latest version (0.0.4) does not support modern versions of the docker API -->
-            <!-- Plugin homepage: https://github.com/sivalabs/testcontainers-jooq-codegen-maven-plugin -->
-            <!-- See also: https://github.com/testcontainers/testcontainers-jooq-codegen-maven-plugin/pull/53 -->
-            <plugin>
-                <groupId>dev.sivalabs</groupId>
-                <artifactId>testcontainers-jooq-codegen-maven-plugin</artifactId>
-                <version>1.0.0</version>
-                <dependencies>
-                    <dependency>
-                        <groupId>org.testcontainers</groupId>
-                        <artifactId>testcontainers-postgresql</artifactId>
-                        <version>${testcontainers.version}</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.postgresql</groupId>
-                        <artifactId>postgresql</artifactId>
-                        <version>${postgresql.version}</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.jooq</groupId>
-                        <artifactId>jooq-codegen</artifactId>
-                        <version>${jooq.version}</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.jooq</groupId>
-                        <artifactId>jooq-meta</artifactId>
-                        <version>${jooq.version}</version>
-                    </dependency>
-                    <dependency>
-                        <groupId>org.jooq</groupId>
-                        <artifactId>jooq</artifactId>
-                        <version>${jooq.version}</version>
-                    </dependency>
-                </dependencies>
-                <executions>
-                    <execution>
-                        <id>generate-jooq-sources</id>
-                        <goals>
-                            <goal>generate</goal>
-                        </goals>
-                        <phase>generate-sources</phase>
-                        <configuration>
-                            <database>
-                                <type>POSTGRES</type>
-                                <containerImage>postgres:18.4-alpine</containerImage>
-                            </database>
-                            <flyway>
-                                <locations>
-                                    <location>filesystem:src/main/resources/db/migration</location>
-                                </locations>
-                            </flyway>
-                            <jooq>
-                                <generator>
-                                    <database>
-                                        <includes>.*</includes>
-                                        <excludes>flyway_schema_history</excludes>
-                                        <inputSchema>public</inputSchema>
-                                    </database>
-                                    <target>
-                                        <packageName>org.example.jooq</packageName>
-                                        <directory>target/generated-sources/jooq</directory>
-                                    </target>
-                                </generator>
-                            </jooq>
-                        </configuration>
-                    </execution>
-                </executions>
-            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
@@ -192,7 +123,7 @@
                                 <arg>--should-stop=ifError=FLOW</arg>
                                 <arg>-Xplugin:ErrorProne -XepDisableAllChecks -Xep:NullAway:ERROR
                                     -XepOpt:NullAway:OnlyNullMarked=true -XepOpt:NullAway:JSpecifyMode=true
-                                    -XepExcludedPaths:.*/generated-sources/.*
+                                    -XepExcludedPaths:.*/org/example/jooq/.*
                                 </arg>
                             </compilerArgs>
                             <annotationProcessorPaths>
@@ -250,4 +181,83 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- Regenerates jOOQ classes into src/main/java/org/example/jooq; run after changing Flyway migrations -->
+        <profile>
+            <id>jooq-codegen</id>
+            <build>
+                <plugins>
+                    <!-- https://testcontainers.com/guides/working-with-jooq-flyway-using-testcontainers/ -->
+                    <!-- Plugin migrated to custom one, since latest version (0.0.4) does not support modern versions of the docker API -->
+                    <!-- Plugin homepage: https://github.com/sivalabs/testcontainers-jooq-codegen-maven-plugin -->
+                    <!-- See also: https://github.com/testcontainers/testcontainers-jooq-codegen-maven-plugin/pull/53 -->
+                    <plugin>
+                        <groupId>dev.sivalabs</groupId>
+                        <artifactId>testcontainers-jooq-codegen-maven-plugin</artifactId>
+                        <dependencies>
+                            <dependency>
+                                <groupId>org.testcontainers</groupId>
+                                <artifactId>testcontainers-postgresql</artifactId>
+                                <version>${testcontainers.version}</version>
+                            </dependency>
+                            <dependency>
+                                <groupId>org.postgresql</groupId>
+                                <artifactId>postgresql</artifactId>
+                                <version>${postgresql.version}</version>
+                            </dependency>
+                            <dependency>
+                                <groupId>org.jooq</groupId>
+                                <artifactId>jooq-codegen</artifactId>
+                                <version>${jooq.version}</version>
+                            </dependency>
+                            <dependency>
+                                <groupId>org.jooq</groupId>
+                                <artifactId>jooq-meta</artifactId>
+                                <version>${jooq.version}</version>
+                            </dependency>
+                            <dependency>
+                                <groupId>org.jooq</groupId>
+                                <artifactId>jooq</artifactId>
+                                <version>${jooq.version}</version>
+                            </dependency>
+                        </dependencies>
+                        <executions>
+                            <execution>
+                                <id>generate-jooq-sources</id>
+                                <goals>
+                                    <goal>generate</goal>
+                                </goals>
+                                <phase>generate-sources</phase>
+                                <configuration>
+                                    <database>
+                                        <type>POSTGRES</type>
+                                        <containerImage>postgres:18.4-alpine</containerImage>
+                                    </database>
+                                    <flyway>
+                                        <locations>
+                                            <location>filesystem:src/main/resources/db/migration</location>
+                                        </locations>
+                                    </flyway>
+                                    <jooq>
+                                        <generator>
+                                            <database>
+                                                <includes>.*</includes>
+                                                <excludes>flyway_schema_history</excludes>
+                                                <inputSchema>public</inputSchema>
+                                            </database>
+                                            <target>
+                                                <packageName>org.example.jooq</packageName>
+                                                <directory>${project.basedir}/src/main/java</directory>
+                                            </target>
+                                        </generator>
+                                    </jooq>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>

@@ -23,6 +23,15 @@ docker compose down                  # stop, keep the database
 docker compose down -v               # stop and wipe the database
 ```
 
+### Regenerating jOOQ classes
+
+The jOOQ classes in `backend/src/main/java/org/example/jooq` are generated from the Flyway migrations and checked in.
+After adding or changing a migration, regenerate them (requires Docker) and commit the result:
+
+```bash
+./mvnw -pl backend -Pjooq-codegen generate-sources
+```
+
 ## Testing the API
 
 Base URL: `http://localhost:8080`  
