@@ -1,6 +1,6 @@
 # Manual API testing
 
-Base URL: `http://localhost:8080` · Swagger UI: http://localhost:8080/swagger-ui.html
+Base URL: `http://localhost:8080` · Swagger UI: http://localhost:8080/swagger-ui.html · Grafana: http://localhost:3000
 
 ## Start / stop
 
@@ -8,15 +8,17 @@ The `app` image only packages a jar that is already built, so build it first:
 
 ```bash
 ./mvnw clean install                 # build backend/target/homework-backend-*.jar
-docker compose up -d --build         # start Postgres + app (rebuilds the app image)
+docker compose up -d --build         # start Postgres, app and Grafana (rebuilds the app image)
 docker compose logs -f app           # follow app logs; ready when "Started Application" appears
-docker compose ps                    # check both containers are up
+docker compose ps                    # check all three containers are up: postgres, app, lgtm
 ```
 
 ```bash
 docker compose down                  # stop, keep the database
 docker compose down -v               # stop and wipe the database
 ```
+
+Stored traces and logs live inside the `lgtm` container, so any `docker compose down` (with or without `-v`) wipes them.
 
 The expected values below assume an **empty database**: run `docker compose down -v` before starting,
 and send the requests **in order**, because each one builds on the ones before it.
@@ -532,3 +534,74 @@ Expect **400 Bad Request**:
   "title": "Bad Request"
 }
 ```
+
+---
+
+## 5. Tracing: follow a request in Grafana
+
+Every request to the containerized app is traced by the OpenTelemetry Java agent. Grafana at http://localhost:3000
+shows the traces (Tempo) and the app's logs (Loki). No login is needed.
+
+Send **1a** and **2a** first. A new trace can take up to half a minute to show up in search; opening it by its ID
+(5d) works right away.
+
+### ✅ 5a. Find the trace of a request
+
+Grafana → **Explore** → data source **Tempo** → **Search**, Service Name `homework`, Span Name `POST /payments`,
+then **Run query**. The app's startup (Flyway migrations) and the connection pool's periodic checks (span name `app`) also leave
+traces, which is why filtering by span name helps. In the **TraceQL** tab the same search is `{name="POST /payments"}`.
+
+### ✅ 5b. Read the trace of 1a
+
+Open the trace. Each bar is one step with its duration, nested under the step that called it:
+
+```
+POST /payments                                            HTTP request
+└─ PaymentsController.recordSettledPayment
+   └─ RecordSettledPaymentUseCaseImpl.recordSettledPayment
+      └─ SpringTransactionRunner.inTransaction            one transaction attempt
+         ├─ PaymentsRepositoryImpl.findByMerchantAndExternalId
+         │  └─ SELECT "public"."payments"                 SQL statement
+         ├─ MerchantLookupAdapter.findById → FindMerchantUseCaseImpl.findById → MerchantsRepositoryImpl.findById
+         ├─ PaymentsRepositoryImpl.nextId
+         ├─ PaymentsRepositoryImpl.addPayment
+         │  └─ INSERT "public"."payments"
+         ├─ LedgerSettlementAdapter.recordSettlement
+         │  └─ PostToLedgerUseCaseImpl.post
+         │     └─ SpringTransactionRunner.inTransaction   joins the outer transaction, see below
+         │        └─ LedgerRepositoryImpl.* with their SQL
+         ├─ COMMIT                                        the transaction's commit
+         └─ COMMIT                                        a few µs, see below
+```
+
+- Click a SQL span to see its statement (`db.statement`) and its actual values (`db.query.parameter.0`, `.1`, …):
+  the `SELECT` on `payments` has `MERCH-001` and `EXT-TEST-001`. The agent names a SQL span after its operation
+  and table; when it can't tell the table it uses the database name instead (`SELECT app`, or just `app` for the
+  connection check at the start of the transaction). The statement itself is always in `db.statement`.
+- The **second, nested `SpringTransactionRunner.inTransaction`** under `PostToLedgerUseCaseImpl.post` is not a new
+  transaction: the ledger joins the payment's transaction. A **retry** would look different: a second
+  `inTransaction` directly under the use case, next to the first.
+- The transaction ends with a `COMMIT` (or a `ROLLBACK` on error), followed by a second `COMMIT` span of a few
+  microseconds. That one is bookkeeping in the JDBC layer, not a second transaction.
+- A failed request is traced too. Send **1f** and open its trace: the use case span is red, and its event names
+  `PaymentConflictException`.
+
+### ✅ 5c. See the request's logs
+
+On any span of the trace, click **Logs for this span**. Loki opens with all of the request's log lines
+(`Request POST /payments`, the use case lines, `Response POST /payments -> 201 …`), whichever span you clicked,
+and no lines from other requests.
+
+### ✅ 5d. From a console line to its trace
+
+Every request line in the console carries its trace ID in brackets (lines outside a request show `[]`):
+
+```bash
+docker compose logs app | grep 'Request POST /payments'
+```
+
+```
+… [nio-8080-exec-1] [9cf694c5dd539def5f3c33a7c66938d6] o.e.shared.web.RequestLoggingFilter : Request POST /payments
+```
+
+Paste the ID into the **TraceQL** tab of Tempo (or into Explore → Tempo → **Query type: TraceQL**) to open the same trace.

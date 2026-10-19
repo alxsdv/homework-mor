@@ -22,11 +22,54 @@ services:
     # Rebuild on every `docker compose up`, so the container always runs the jar Maven built last.
     pull_policy: build
     environment:
-      - 'SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/app'
-      - 'SPRING_DATASOURCE_USERNAME=app'
-      - 'SPRING_DATASOURCE_PASSWORD=app'
+      SPRING_DATASOURCE_URL: 'jdbc:postgresql://postgres:5432/app'
+      SPRING_DATASOURCE_USERNAME: 'app'
+      SPRING_DATASOURCE_PASSWORD: 'app'
+      # Tracing: the OpenTelemetry agent packaged in the image sends traces and logs to the lgtm service.
+      JAVA_TOOL_OPTIONS: '-javaagent:/app/opentelemetry-javaagent.jar'
+      OTEL_SERVICE_NAME: 'homework'
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'http://lgtm:4318'
+      OTEL_METRICS_EXPORTER: 'none'
+      OTEL_LOGS_EXPORTER: 'otlp'
+      # The agent puts trace_id into the logging MDC; print it so a console line can be looked up in Grafana.
+      LOGGING_PATTERN_CORRELATION: '[%X{trace_id:-}] '
+      # Bind values in SQL spans; they include customer data, which the request logs already contain anyway.
+      OTEL_INSTRUMENTATION_JDBC_EXPERIMENTAL_CAPTURE_QUERY_PARAMETERS: 'true'
+      OTEL_INSTRUMENTATION_JDBC_EXPERIMENTAL_TRANSACTION_ENABLED: 'true'
+      # The steps between the HTTP request and the SQL statements. Concrete classes, not the port interfaces:
+      # the agent instruments classes.
+      OTEL_INSTRUMENTATION_METHODS_INCLUDE: >-
+        org.example.payments.rest.PaymentsController[recordSettledPayment,recordRefund];
+        org.example.merchants.rest.MerchantsController[getBalances];
+        org.example.ledger.rest.TaxStatementController[getTaxStatement];
+        org.example.payments.core.services.RecordSettledPaymentUseCaseImpl[recordSettledPayment];
+        org.example.payments.core.services.RecordRefundUseCaseImpl[recordRefund];
+        org.example.merchants.core.services.FindMerchantUseCaseImpl[findById];
+        org.example.merchants.core.services.GetMerchantBalancesUseCaseImpl[getBalances];
+        org.example.ledger.core.services.PostToLedgerUseCaseImpl[post];
+        org.example.ledger.core.services.GetMerchantPayablesUseCaseImpl[getMerchantPayables];
+        org.example.ledger.core.services.GetTaxPayablesUseCaseImpl[getTaxPayables];
+        org.example.shared.transactions.SpringTransactionRunner[inTransaction];
+        org.example.payments.adapters.out.PaymentsRepositoryImpl[nextId,findByMerchantAndExternalId,findByIdForUpdate,addPayment];
+        org.example.payments.adapters.out.RefundsRepositoryImpl[nextId,findByMerchantAndExternalId,refundedSoFar,addRefund];
+        org.example.payments.adapters.out.LedgerSettlementAdapter[recordSettlement,recordRefund];
+        org.example.payments.adapters.out.MerchantLookupAdapter[findById];
+        org.example.merchants.adapters.out.MerchantsRepositoryImpl[findById];
+        org.example.merchants.adapters.out.LedgerMerchantBalancesAdapter[balancesOf];
+        org.example.ledger.adapters.out.LedgerRepositoryImpl[findOrCreateAccount,lockCachedAccount,insertTransaction,insertEntries,updateBalance];
+        org.example.ledger.adapters.out.LedgerQueriesImpl[merchantPayables,taxPayables]
     ports:
       - '8080:8080'
     depends_on:
       postgres:
         condition: service_healthy
+      lgtm:
+        condition: service_started
+
+  # Grafana with trace and log storage (Tempo, Loki) in one container. For local use only.
+  lgtm:
+    image: 'grafana/otel-lgtm:0.36.0'
+    ports:
+      - '3000:3000'
+    volumes:
+      - './observability/grafana-tempo-datasource.yaml:/otel-lgtm/grafana/conf/provisioning/datasources/zz-tempo.yaml:ro'

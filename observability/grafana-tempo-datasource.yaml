@@ -1,0 +1,30 @@
+# Redefines the Tempo datasource that grafana/otel-lgtm provisions, changing only the link from a span to its logs.
+# Loaded after the image's own grafana-datasources.yaml, so this definition wins.
+apiVersion: 1
+
+datasources:
+  - name: Tempo
+    type: tempo
+    uid: tempo
+    url: http://127.0.0.1:3200
+    editable: true
+    jsonData:
+      tracesToLogsV2:
+        customQuery: true
+        datasourceUid: "loki"
+        query: '{$${__tags}} | trace_id = "$${__trace.traceId}"'
+        tags:
+          - key: "service.name"
+            value: "service_name"
+        # By default only logs within the clicked span's own time range are shown. Widen the range so that any span
+        # shows all of its request's lines; the trace_id filter keeps other requests out.
+        spanStartTimeShift: '-1h'
+        spanEndTimeShift: '1h'
+      serviceMap:
+        datasourceUid: "prometheus"
+      search:
+        hide: false
+      nodeGraph:
+        enabled: true
+      lokiSearch:
+        datasourceUid: "loki"

@@ -6,6 +6,8 @@ USER app
 
 WORKDIR /app
 COPY target/homework-backend-*.jar app.jar
+# Docker Compose attaches the agent through JAVA_TOOL_OPTIONS, so the image also runs without it.
+COPY target/opentelemetry-javaagent.jar opentelemetry-javaagent.jar
 
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
