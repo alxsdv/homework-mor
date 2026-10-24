@@ -4,6 +4,7 @@ import org.example.IntegrationTestBase;
 import org.example.ledger.core.domain.AccountKey;
 import org.example.ledger.core.domain.LedgerEntry;
 import org.example.ledger.core.domain.LedgerTransaction;
+import org.example.ledger.core.ports.in.InsufficientFundsException;
 import org.example.ledger.core.ports.in.PostToLedgerUseCase;
 import org.example.shared.transactions.TransactionRunner;
 import org.junit.jupiter.api.Test;
@@ -20,10 +21,12 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowable;
 import static org.example.jooq.Tables.LEDGER_ACCOUNTS;
 import static org.example.jooq.Tables.LEDGER_ENTRIES;
 import static org.example.jooq.Tables.LEDGER_TRANSACTIONS;
@@ -48,6 +51,15 @@ class PostToLedgerIT extends IntegrationTestBase {
                 new LedgerEntry(AccountKey.taxPayable(EUR, "DE"), new BigDecimal(tax).negate()),
                 new LedgerEntry(AccountKey.feeRevenue(EUR), new BigDecimal(fee).negate()),
                 new LedgerEntry(AccountKey.merchantPayable(EUR, merchantId), new BigDecimal(merchant).negate())));
+    }
+
+    /** A payout hold: the amount moves from the merchant's available balance to pending. */
+    private static LedgerTransaction hold(String sourceId, String merchantId, String amount) {
+        BigDecimal held = new BigDecimal(amount);
+        return new LedgerTransaction("PAYOUT_HELD", "payout", sourceId, Instant.parse("2026-10-03T07:00:00Z"),
+                                     List.of(new LedgerEntry(AccountKey.merchantPayable(EUR, merchantId), held),
+                                             new LedgerEntry(AccountKey.merchantPayoutPending(EUR, merchantId),
+                                                             held.negate())));
     }
 
     private BigDecimal merchantBalance(String merchantId) {
@@ -149,11 +161,99 @@ class PostToLedgerIT extends IntegrationTestBase {
     }
 
     @Test
+    void holdOfTheWholeAvailableBalanceIsAllowed() {
+        postToLedger.post(settlement("PAY-0000000001", "MERCH-001", "119.00", "19.00", "3.00", "97.00"));
+
+        postToLedger.postWithinAvailableFunds(hold("PO-0000000001", "MERCH-001", "97.00"));
+
+        assertThat(merchantBalance("MERCH-001")).isEqualByComparingTo("0");
+        assertThat(merchantEntriesSum("MERCH-001")).isEqualByComparingTo("0");
+    }
+
+    @Test
+    void holdBeyondTheAvailableBalanceIsRejectedAndLeavesNothingBehind() {
+        postToLedger.post(settlement("PAY-0000000001", "MERCH-001", "119.00", "19.00", "3.00", "97.00"));
+
+        assertThatThrownBy(() -> postToLedger.postWithinAvailableFunds(hold("PO-0000000001", "MERCH-001", "97.01")))
+                .isInstanceOfSatisfying(InsufficientFundsException.class, e -> {
+                    assertThat(e.available()).isEqualByComparingTo("97.00");
+                    assertThat(e.requested()).isEqualByComparingTo("97.01");
+                    assertThat(e.account()).isEqualTo(AccountKey.merchantPayable(EUR, "MERCH-001"));
+                })
+                .hasMessage("Requested 97.01 EUR exceeds the available 97.00");
+
+        assertThat(dsl.fetchCount(LEDGER_TRANSACTIONS)).isEqualTo(1);
+        assertThat(dsl.fetchCount(LEDGER_ENTRIES)).isEqualTo(4);
+        assertThat(merchantBalance("MERCH-001")).isEqualByComparingTo("-97.00");
+    }
+
+    @Test
+    void holdForAMerchantWithoutPaymentsIsRejected() {
+        assertThatThrownBy(() -> postToLedger.postWithinAvailableFunds(hold("PO-0000000001", "MERCH-001", "0.01")))
+                .isInstanceOf(InsufficientFundsException.class);
+
+        assertThat(dsl.fetchCount(LEDGER_TRANSACTIONS)).isZero();
+    }
+
+    /** Each hold checks the balance under the row lock, so concurrent ones can't all see the same 10.00. */
+    @Test
+    void concurrentHoldsNeverTakeMoreThanIsAvailable() throws Exception {
+        postToLedger.post(settlement("PAY-0000000001", "MERCH-001", "10.00", "0.00", "0.00", "10.00"));
+        int holds = 10;
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<?>> futures = new ArrayList<>();
+        try (ExecutorService pool = Executors.newFixedThreadPool(holds)) {
+            for (int i = 0; i < holds; i++) {
+                String sourceId = "PO-C" + i;
+                futures.add(pool.submit(() -> {
+                    start.await();
+                    postToLedger.postWithinAvailableFunds(hold(sourceId, "MERCH-001", "3.00"));
+                    return null;
+                }));
+            }
+            start.countDown();
+            int rejected = 0;
+            for (Future<?> future : futures) {
+                Throwable failure = catchThrowable(() -> future.get(30, TimeUnit.SECONDS));
+                if (failure != null) {
+                    assertThat(failure).isInstanceOf(ExecutionException.class)
+                            .hasCauseInstanceOf(InsufficientFundsException.class);
+                    rejected++;
+                }
+            }
+            assertThat(rejected).isEqualTo(holds - 3);
+        }
+
+        assertThat(merchantBalance("MERCH-001")).isEqualByComparingTo("-1.00");
+        assertThat(merchantEntriesSum("MERCH-001")).isEqualByComparingTo("-1.00");
+    }
+
+    /** Refunds don't check funds: one after a payout may leave the merchant owing us, by policy. */
+    @Test
+    void plainPostingMayLeaveTheMerchantOwingUs() {
+        postToLedger.post(settlement("PAY-0000000001", "MERCH-001", "119.00", "19.00", "3.00", "97.00"));
+        postToLedger.postWithinAvailableFunds(hold("PO-0000000001", "MERCH-001", "97.00"));
+
+        postToLedger.post(new LedgerTransaction("PAYMENT_REFUNDED", "refund", "REF-0000000001",
+                                                Instant.parse("2026-10-04T07:00:00Z"), List.of(
+                new LedgerEntry(AccountKey.cashClearing(EUR), new BigDecimal("-59.50")),
+                new LedgerEntry(AccountKey.taxPayable(EUR, "DE"), new BigDecimal("9.50")),
+                new LedgerEntry(AccountKey.feeRevenue(EUR), new BigDecimal("1.50")),
+                new LedgerEntry(AccountKey.merchantPayable(EUR, "MERCH-001"), new BigDecimal("48.50")))));
+
+        assertThat(merchantBalance("MERCH-001")).isEqualByComparingTo("48.50");
+    }
+
+    @Test
     void databaseRejectsAccountRowsWithWrongKeyParts() {
-        // Second line of defence behind AccountKey's constructor (V3 CHECK constraint).
+        // Second line of defence behind AccountKey's constructor (V3 CHECK constraint, widened in V5).
         assertThatThrownBy(() -> dsl.execute(
                 "insert into ledger_accounts (type, currency, merchant_id, country_code, balance) "
                 + "values ('MERCHANT_PAYABLE', 'EUR', null, null, 0)"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+        assertThatThrownBy(() -> dsl.execute(
+                "insert into ledger_accounts (type, currency, merchant_id, country_code, balance) "
+                + "values ('MERCHANT_PAYOUT_PENDING', 'EUR', null, null, null)"))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 }

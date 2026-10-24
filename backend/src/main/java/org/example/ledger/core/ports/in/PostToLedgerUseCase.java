@@ -10,4 +10,11 @@ public interface PostToLedgerUseCase {
      * already exists.
      */
     void post(LedgerTransaction transaction);
+
+    /**
+     * Like post, for a transaction that takes money out of a merchant's available balance (MERCHANT_PAYABLE),
+     * such as a payout hold. Under the account's row lock it checks that the balance covers the debit, so the
+     * merchant can't end up owing us. Throws InsufficientFundsException otherwise, before anything is written.
+     */
+    void postWithinAvailableFunds(LedgerTransaction transaction);
 }

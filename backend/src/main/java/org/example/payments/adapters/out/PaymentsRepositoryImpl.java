@@ -8,6 +8,7 @@ import org.example.payments.core.domain.PaymentId;
 import org.example.payments.core.ports.out.DuplicateExternalIdException;
 import org.example.payments.core.ports.out.DuplicatePaymentIdException;
 import org.example.payments.core.ports.out.PaymentsRepository;
+import org.example.shared.persistence.UniqueViolations;
 import org.example.shared.utils.PublicIds;
 import org.jooq.DSLContext;
 import org.slf4j.Logger;

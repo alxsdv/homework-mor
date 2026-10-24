@@ -25,6 +25,11 @@ class MerchantBalancesApiIT extends IntegrationTestBase {
             payment("EXT-P3", "MERCH-001", "US", "USD", "108.00", "0.08", "2026-08-20T10:00:00Z"),
             payment("EXT-P4", "MERCH-002", "DE", "EUR", "238.00", "0.19", "2026-10-01T01:30:00+02:00"));
 
+    /** A balance with no payout in flight: everything we owe is available. */
+    private static Map<String, Object> withoutPayouts(String currency, String payable) {
+        return Map.of("currency", currency, "payable", payable, "available", payable, "pendingPayout", "0.00");
+    }
+
     /** Records P1–P4 and returns their payment ids, in order. */
     private List<String> recordP1ToP4() {
         return P1_TO_P4.stream().map(body -> recordPayment(http, body)).toList();
@@ -47,8 +52,8 @@ class MerchantBalancesApiIT extends IntegrationTestBase {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).containsEntry("merchantId", "MERCH-001");
         assertThat(response.getBody().get("balances")).isEqualTo(List.of(
-                Map.of("currency", "EUR", "payable", "194.00"),
-                Map.of("currency", "USD", "payable", "97.00")));
+                withoutPayouts("EUR", "194.00"),
+                withoutPayouts("USD", "97.00")));
     }
 
     @Test
@@ -56,7 +61,7 @@ class MerchantBalancesApiIT extends IntegrationTestBase {
         recordP1ToP4();
 
         assertThat(getBalances("MERCH-002").getBody().get("balances"))
-                .isEqualTo(List.of(Map.of("currency", "EUR", "payable", "190.00")));
+                .isEqualTo(List.of(withoutPayouts("EUR", "190.00")));
     }
 
     @Test
@@ -94,10 +99,10 @@ class MerchantBalancesApiIT extends IntegrationTestBase {
         recordRefund(http, ids.get(2), refund("RE-2", "2026-09-01T10:00:00Z", null));
 
         assertThat(getBalances("MERCH-001").getBody().get("balances")).isEqualTo(List.of(
-                Map.of("currency", "EUR", "payable", "145.50"),
-                Map.of("currency", "USD", "payable", "0.00")));
+                withoutPayouts("EUR", "145.50"),
+                withoutPayouts("USD", "0.00")));
         assertThat(getBalances("MERCH-002").getBody().get("balances"))
-                .isEqualTo(List.of(Map.of("currency", "EUR", "payable", "190.00")));
+                .isEqualTo(List.of(withoutPayouts("EUR", "190.00")));
     }
 
     @Test
@@ -110,7 +115,7 @@ class MerchantBalancesApiIT extends IntegrationTestBase {
         assertThat(rest).containsEntry("refundAmount", "93.00").containsEntry("merchantAmount", "72.75");
         // P2's 97.00 merchant share is gone entirely (24.25 + 72.75); P1's 97.00 is left.
         assertThat(getBalances("MERCH-001").getBody().get("balances")).isEqualTo(List.of(
-                Map.of("currency", "EUR", "payable", "97.00"),
-                Map.of("currency", "USD", "payable", "97.00")));
+                withoutPayouts("EUR", "97.00"),
+                withoutPayouts("USD", "97.00")));
     }
 }

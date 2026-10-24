@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class GetMerchantBalancesUseCaseImplTest {
 
     private static final MerchantBalance EUR_194 =
-            new MerchantBalance(Currency.getInstance("EUR"), new BigDecimal("194.00"));
+            new MerchantBalance(Currency.getInstance("EUR"), new BigDecimal("194.00"), new BigDecimal("0.00"));
 
     private final Set<String> knownMerchants = Set.of("MERCH-001", "MERCH-003");
     private final Map<String, List<MerchantBalance>> ledger = Map.of("MERCH-001", List.of(EUR_194));

@@ -44,6 +44,14 @@ class LedgerQueriesIT extends IntegrationTestBase {
                 new LedgerEntry(AccountKey.merchantPayable(currency, merchantId), merchantAmount.negate()))));
     }
 
+    private void hold(String sourceId, String merchantId, Currency currency, String amount) {
+        BigDecimal held = new BigDecimal(amount);
+        postToLedger.post(new LedgerTransaction("PAYOUT_HELD", "payout", sourceId,
+                                                Instant.parse("2026-09-01T10:00:00Z"), List.of(
+                new LedgerEntry(AccountKey.merchantPayable(currency, merchantId), held),
+                new LedgerEntry(AccountKey.merchantPayoutPending(currency, merchantId), held.negate()))));
+    }
+
     @Test
     void merchantPayablesArePositiveAtCurrencyScaleOrderedByCurrency() {
         settle("P-1", "MERCH-001", "DE", EUR, "2026-07-15T10:00:00Z", "19.00", "97.00");
@@ -54,9 +62,24 @@ class LedgerQueriesIT extends IntegrationTestBase {
 
         // Record equality compares BigDecimal with equals, so this also pins the scale.
         assertThat(ledgerQueries.merchantPayables("MERCH-001")).containsExactly(
-                new MerchantPayable("MERCH-001", EUR, new BigDecimal("194.00")),
-                new MerchantPayable("MERCH-001", JPY, new BigDecimal("1455")),
-                new MerchantPayable("MERCH-001", USD, new BigDecimal("97.00")));
+                new MerchantPayable("MERCH-001", EUR, new BigDecimal("194.00"), new BigDecimal("0.00")),
+                new MerchantPayable("MERCH-001", JPY, new BigDecimal("1455"), new BigDecimal("0")),
+                new MerchantPayable("MERCH-001", USD, new BigDecimal("97.00"), new BigDecimal("0.00")));
+    }
+
+    @Test
+    void merchantPayablesSplitWhatIsHeldForPayoutsFromWhatIsAvailable() {
+        settle("P-1", "MERCH-001", "DE", EUR, "2026-07-15T10:00:00Z", "19.00", "97.00");
+        settle("P-2", "MERCH-001", "US", USD, "2026-08-20T10:00:00Z", "8.00", "97.00");
+        // Two holds in EUR, as payouts do it: available to pending.
+        hold("PO-1", "MERCH-001", EUR, "40.00");
+        hold("PO-2", "MERCH-001", EUR, "10.50");
+
+        assertThat(ledgerQueries.merchantPayables("MERCH-001")).containsExactly(
+                new MerchantPayable("MERCH-001", EUR, new BigDecimal("46.50"), new BigDecimal("50.50")),
+                new MerchantPayable("MERCH-001", USD, new BigDecimal("97.00"), new BigDecimal("0.00")));
+        assertThat(ledgerQueries.merchantPayables("MERCH-001").getFirst().payable())
+                .isEqualByComparingTo("97.00");
     }
 
     @Test

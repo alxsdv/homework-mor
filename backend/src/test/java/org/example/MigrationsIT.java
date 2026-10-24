@@ -33,7 +33,7 @@ public class MigrationsIT extends IntegrationTestBase {
     }
 
     @Test
-    void paymentsAndRefundsReferenceMerchantsByPublicId() {
+    void paymentsRefundsAndPayoutsReferenceMerchantsByPublicId() {
         List<String> references = dsl.fetch("""
                         select c.conrelid::regclass || '.' || a.attname || ' -> ' || fa.attname
                         from pg_constraint c
@@ -44,7 +44,8 @@ public class MigrationsIT extends IntegrationTestBase {
                 .getValues(0, String.class);
 
         assertThat(references).containsExactlyInAnyOrder(
-                "payments.merchant_id -> public_id", "refunds.merchant_id -> public_id");
+                "payments.merchant_id -> public_id", "refunds.merchant_id -> public_id",
+                "payouts.merchant_id -> public_id");
     }
 
     @Test
@@ -69,5 +70,17 @@ public class MigrationsIT extends IntegrationTestBase {
 
         assertThat(names).containsExactlyInAnyOrder(
                 "refunds_public_id_key", "refunds_merchant_id_external_id_key");
+    }
+
+    @Test
+    void payoutsUniqueConstraintsHaveTheNamesTheAdapterMapsOn() {
+        List<String> names = dsl.fetch("""
+                        select conname from pg_constraint
+                        where conrelid = 'payouts'::regclass and contype = 'u'
+                        """)
+                .getValues(0, String.class);
+
+        assertThat(names).containsExactlyInAnyOrder(
+                "payouts_public_id_key", "payouts_merchant_id_external_id_key");
     }
 }

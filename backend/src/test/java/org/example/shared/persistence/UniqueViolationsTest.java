@@ -1,4 +1,4 @@
-package org.example.payments.adapters.out;
+package org.example.shared.persistence;
 
 import org.junit.jupiter.api.Test;
 import org.postgresql.util.PSQLException;

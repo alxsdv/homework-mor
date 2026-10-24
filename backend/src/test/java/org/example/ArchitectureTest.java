@@ -13,8 +13,9 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
 
 /**
- * Module boundaries. payments → merchants → ledger, and payments → ledger. A module calls another only from its
- * adapters.out, only through the other's core.ports.in and core.domain, and touches only its own jOOQ tables.
+ * Module boundaries. payments → merchants → ledger, payments → ledger, and the same for payouts, which doesn't know
+ * payments (nor payments it). A module calls another only from its adapters.out, only through the other's
+ * core.ports.in and core.domain, and touches only its own jOOQ tables.
  */
 @AnalyzeClasses(packages = "org.example", importOptions = ImportOption.DoNotIncludeTests.class)
 class ArchitectureTest {
@@ -65,6 +66,10 @@ class ArchitectureTest {
             onlyOutboundAdaptersUse("payments", "merchants", "ledger");
 
     @ArchTest
+    static final ArchRule onlyPayoutsOutboundAdaptersUseOtherModules =
+            onlyOutboundAdaptersUse("payouts", "merchants", "ledger");
+
+    @ArchTest
     static final ArchRule onlyMerchantsOutboundAdaptersUseTheLedger =
             onlyOutboundAdaptersUse("merchants", "ledger");
 
@@ -75,35 +80,57 @@ class ArchitectureTest {
     static final ArchRule paymentsUsesOnlyLedgersPublicApi = usesOnlyThePublicApiOf("payments", "ledger");
 
     @ArchTest
+    static final ArchRule payoutsUsesOnlyMerchantsPublicApi = usesOnlyThePublicApiOf("payouts", "merchants");
+
+    @ArchTest
+    static final ArchRule payoutsUsesOnlyLedgersPublicApi = usesOnlyThePublicApiOf("payouts", "ledger");
+
+    @ArchTest
     static final ArchRule merchantsUsesOnlyLedgersPublicApi = usesOnlyThePublicApiOf("merchants", "ledger");
 
     @ArchTest
     static final ArchRule ledgerKnowsNoOtherModule = noClasses()
             .that().resideInAPackage("org.example.ledger..")
-            .should().dependOnClassesThat().resideInAnyPackage("org.example.payments..", "org.example.merchants..");
+            .should().dependOnClassesThat().resideInAnyPackage(
+                    "org.example.payments..", "org.example.payouts..", "org.example.merchants..");
 
     @ArchTest
-    static final ArchRule merchantsDoesNotKnowPayments = noClasses()
+    static final ArchRule merchantsDoesNotKnowPaymentsOrPayouts = noClasses()
             .that().resideInAPackage("org.example.merchants..")
+            .should().dependOnClassesThat().resideInAnyPackage("org.example.payments..", "org.example.payouts..");
+
+    @ArchTest
+    static final ArchRule paymentsDoesNotKnowPayouts = noClasses()
+            .that().resideInAPackage("org.example.payments..")
+            .should().dependOnClassesThat().resideInAPackage("org.example.payouts..");
+
+    @ArchTest
+    static final ArchRule payoutsDoesNotKnowPayments = noClasses()
+            .that().resideInAPackage("org.example.payouts..")
             .should().dependOnClassesThat().resideInAPackage("org.example.payments..");
 
     @ArchTest
     static final ArchRule paymentsTouchesOnlyPaymentTables =
-            touchesOnlyItsOwnTables("payments", "Ledger", "Merchants");
+            touchesOnlyItsOwnTables("payments", "Ledger", "Merchants", "Payouts");
+
+    @ArchTest
+    static final ArchRule payoutsTouchesOnlyPayoutTables =
+            touchesOnlyItsOwnTables("payouts", "Ledger", "Merchants", "Payments", "Refunds");
 
     @ArchTest
     static final ArchRule merchantsTouchesOnlyMerchantTables =
-            touchesOnlyItsOwnTables("merchants", "Ledger", "Payments", "Refunds");
+            touchesOnlyItsOwnTables("merchants", "Ledger", "Payments", "Refunds", "Payouts");
 
     @ArchTest
     static final ArchRule ledgerTouchesOnlyLedgerTables =
-            touchesOnlyItsOwnTables("ledger", "Payments", "Merchants", "Refunds");
+            touchesOnlyItsOwnTables("ledger", "Payments", "Merchants", "Refunds", "Payouts");
 
     @ArchTest
     static final ArchRule sharedDependsOnNoModule = noClasses()
             .that().resideInAPackage("org.example.shared..")
             .should().dependOnClassesThat().resideInAnyPackage(
-                    "org.example.payments..", "org.example.merchants..", "org.example.ledger..");
+                    "org.example.payments..", "org.example.payouts..", "org.example.merchants..",
+                    "org.example.ledger..");
 
     /** Covers shared and jooq as well; neither depends on a module, so this is the stricter check. */
     @ArchTest

@@ -5,14 +5,14 @@ import org.jspecify.annotations.Nullable;
 import java.util.Currency;
 
 /**
- * Identifies a ledger account. merchantId is set only for MERCHANT_PAYABLE, countryCode only for TAX_PAYABLE.
+ * Identifies a ledger account. merchantId is set only for the per-merchant types, countryCode only for TAX_PAYABLE.
  * Mirrors the ledger_accounts_key_parts CHECK constraint.
  */
 public record AccountKey(AccountType type, Currency currency, @Nullable String merchantId,
                          @Nullable String countryCode) {
 
     public AccountKey {
-        boolean needsMerchant = type == AccountType.MERCHANT_PAYABLE;
+        boolean needsMerchant = type.isPerMerchant();
         boolean needsCountry = type == AccountType.TAX_PAYABLE;
         if (needsMerchant && merchantId == null) {
             throw new IllegalArgumentException(type + " account requires a merchantId");
@@ -38,6 +38,10 @@ public record AccountKey(AccountType type, Currency currency, @Nullable String m
 
     public static AccountKey merchantPayable(Currency currency, String merchantId) {
         return new AccountKey(AccountType.MERCHANT_PAYABLE, currency, merchantId, null);
+    }
+
+    public static AccountKey merchantPayoutPending(Currency currency, String merchantId) {
+        return new AccountKey(AccountType.MERCHANT_PAYOUT_PENDING, currency, merchantId, null);
     }
 
     public static AccountKey taxPayable(Currency currency, String countryCode) {

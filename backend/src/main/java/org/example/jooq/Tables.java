@@ -9,6 +9,7 @@ import org.example.jooq.tables.LedgerEntries;
 import org.example.jooq.tables.LedgerTransactions;
 import org.example.jooq.tables.Merchants;
 import org.example.jooq.tables.Payments;
+import org.example.jooq.tables.Payouts;
 import org.example.jooq.tables.Refunds;
 
 
@@ -42,6 +43,11 @@ public class Tables {
      * The table <code>public.payments</code>.
      */
     public static final Payments PAYMENTS = Payments.PAYMENTS;
+
+    /**
+     * The table <code>public.payouts</code>.
+     */
+    public static final Payouts PAYOUTS = Payouts.PAYOUTS;
 
     /**
      * The table <code>public.refunds</code>.

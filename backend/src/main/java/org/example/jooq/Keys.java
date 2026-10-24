@@ -9,12 +9,14 @@ import org.example.jooq.tables.LedgerEntries;
 import org.example.jooq.tables.LedgerTransactions;
 import org.example.jooq.tables.Merchants;
 import org.example.jooq.tables.Payments;
+import org.example.jooq.tables.Payouts;
 import org.example.jooq.tables.Refunds;
 import org.example.jooq.tables.records.LedgerAccountsRecord;
 import org.example.jooq.tables.records.LedgerEntriesRecord;
 import org.example.jooq.tables.records.LedgerTransactionsRecord;
 import org.example.jooq.tables.records.MerchantsRecord;
 import org.example.jooq.tables.records.PaymentsRecord;
+import org.example.jooq.tables.records.PayoutsRecord;
 import org.example.jooq.tables.records.RefundsRecord;
 import org.jooq.ForeignKey;
 import org.jooq.TableField;
@@ -45,6 +47,9 @@ public class Keys {
     public static final UniqueKey<PaymentsRecord> PAYMENTS_MERCHANT_ID_EXTERNAL_ID_KEY = Internal.createUniqueKey(Payments.PAYMENTS, DSL.name("payments_merchant_id_external_id_key"), new TableField[] { Payments.PAYMENTS.MERCHANT_ID, Payments.PAYMENTS.EXTERNAL_ID }, true);
     public static final UniqueKey<PaymentsRecord> PAYMENTS_PKEY = Internal.createUniqueKey(Payments.PAYMENTS, DSL.name("payments_pkey"), new TableField[] { Payments.PAYMENTS.ID }, true);
     public static final UniqueKey<PaymentsRecord> PAYMENTS_PUBLIC_ID_KEY = Internal.createUniqueKey(Payments.PAYMENTS, DSL.name("payments_public_id_key"), new TableField[] { Payments.PAYMENTS.PUBLIC_ID }, true);
+    public static final UniqueKey<PayoutsRecord> PAYOUTS_MERCHANT_ID_EXTERNAL_ID_KEY = Internal.createUniqueKey(Payouts.PAYOUTS, DSL.name("payouts_merchant_id_external_id_key"), new TableField[] { Payouts.PAYOUTS.MERCHANT_ID, Payouts.PAYOUTS.EXTERNAL_ID }, true);
+    public static final UniqueKey<PayoutsRecord> PAYOUTS_PKEY = Internal.createUniqueKey(Payouts.PAYOUTS, DSL.name("payouts_pkey"), new TableField[] { Payouts.PAYOUTS.ID }, true);
+    public static final UniqueKey<PayoutsRecord> PAYOUTS_PUBLIC_ID_KEY = Internal.createUniqueKey(Payouts.PAYOUTS, DSL.name("payouts_public_id_key"), new TableField[] { Payouts.PAYOUTS.PUBLIC_ID }, true);
     public static final UniqueKey<RefundsRecord> REFUNDS_MERCHANT_ID_EXTERNAL_ID_KEY = Internal.createUniqueKey(Refunds.REFUNDS, DSL.name("refunds_merchant_id_external_id_key"), new TableField[] { Refunds.REFUNDS.MERCHANT_ID, Refunds.REFUNDS.EXTERNAL_ID }, true);
     public static final UniqueKey<RefundsRecord> REFUNDS_PKEY = Internal.createUniqueKey(Refunds.REFUNDS, DSL.name("refunds_pkey"), new TableField[] { Refunds.REFUNDS.ID }, true);
     public static final UniqueKey<RefundsRecord> REFUNDS_PUBLIC_ID_KEY = Internal.createUniqueKey(Refunds.REFUNDS, DSL.name("refunds_public_id_key"), new TableField[] { Refunds.REFUNDS.PUBLIC_ID }, true);
@@ -56,6 +61,7 @@ public class Keys {
     public static final ForeignKey<LedgerEntriesRecord, LedgerAccountsRecord> LEDGER_ENTRIES__LEDGER_ENTRIES_ACCOUNT_ID_FKEY = Internal.createForeignKey(LedgerEntries.LEDGER_ENTRIES, DSL.name("ledger_entries_account_id_fkey"), new TableField[] { LedgerEntries.LEDGER_ENTRIES.ACCOUNT_ID }, Keys.LEDGER_ACCOUNTS_PKEY, new TableField[] { LedgerAccounts.LEDGER_ACCOUNTS.ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<LedgerEntriesRecord, LedgerTransactionsRecord> LEDGER_ENTRIES__LEDGER_ENTRIES_TRANSACTION_ID_FKEY = Internal.createForeignKey(LedgerEntries.LEDGER_ENTRIES, DSL.name("ledger_entries_transaction_id_fkey"), new TableField[] { LedgerEntries.LEDGER_ENTRIES.TRANSACTION_ID }, Keys.LEDGER_TRANSACTIONS_PKEY, new TableField[] { LedgerTransactions.LEDGER_TRANSACTIONS.ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<PaymentsRecord, MerchantsRecord> PAYMENTS__PAYMENTS_MERCHANT_ID_FKEY = Internal.createForeignKey(Payments.PAYMENTS, DSL.name("payments_merchant_id_fkey"), new TableField[] { Payments.PAYMENTS.MERCHANT_ID }, Keys.MERCHANTS_PUBLIC_ID_KEY, new TableField[] { Merchants.MERCHANTS.PUBLIC_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
+    public static final ForeignKey<PayoutsRecord, MerchantsRecord> PAYOUTS__PAYOUTS_MERCHANT_ID_FKEY = Internal.createForeignKey(Payouts.PAYOUTS, DSL.name("payouts_merchant_id_fkey"), new TableField[] { Payouts.PAYOUTS.MERCHANT_ID }, Keys.MERCHANTS_PUBLIC_ID_KEY, new TableField[] { Merchants.MERCHANTS.PUBLIC_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<RefundsRecord, MerchantsRecord> REFUNDS__REFUNDS_MERCHANT_ID_FKEY = Internal.createForeignKey(Refunds.REFUNDS, DSL.name("refunds_merchant_id_fkey"), new TableField[] { Refunds.REFUNDS.MERCHANT_ID }, Keys.MERCHANTS_PUBLIC_ID_KEY, new TableField[] { Merchants.MERCHANTS.PUBLIC_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
     public static final ForeignKey<RefundsRecord, PaymentsRecord> REFUNDS__REFUNDS_PAYMENT_ID_FKEY = Internal.createForeignKey(Refunds.REFUNDS, DSL.name("refunds_payment_id_fkey"), new TableField[] { Refunds.REFUNDS.PAYMENT_ID }, Keys.PAYMENTS_PUBLIC_ID_KEY, new TableField[] { Payments.PAYMENTS.PUBLIC_ID }, true, ForeignKeyRule.NO_ACTION, ForeignKeyRule.NO_ACTION);
 }

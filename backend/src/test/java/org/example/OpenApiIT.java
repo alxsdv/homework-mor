@@ -30,7 +30,8 @@ class OpenApiIT extends IntegrationTestBase {
     @Test
     void specListsEveryEndpoint() {
         assertThat(at(fetchSpec(), "paths")).containsOnlyKeys(
-                "/payments", "/payments/{paymentId}/refund", "/merchants/{merchantId}/balances", "/tax-statement");
+                "/payments", "/payments/{paymentId}/refund", "/merchants/{merchantId}/balances", "/tax-statement",
+                "/payouts", "/payouts/{payoutId}/settle", "/payouts/{payoutId}/fail");
     }
 
     @Test
@@ -40,6 +41,7 @@ class OpenApiIT extends IntegrationTestBase {
         assertThat(at(paths, "/payments", "post", "responses")).containsKey("201").doesNotContainKey("200");
         assertThat(at(paths, "/payments/{paymentId}/refund", "post", "responses"))
                 .containsKey("201").doesNotContainKey("200");
+        assertThat(at(paths, "/payouts", "post", "responses")).containsKey("201").doesNotContainKey("200");
     }
 
     @Test
@@ -65,6 +67,8 @@ class OpenApiIT extends IntegrationTestBase {
                 .containsExactlyInAnyOrder("addressLine1", "countryCode", "postalCode");
         assertThat(at(schemas, "RefundRecord").get("required")).asInstanceOf(LIST)
                 .containsExactlyInAnyOrder("externalId", "refundedAt");
+        assertThat(at(schemas, "PayoutRecord").get("required")).asInstanceOf(LIST)
+                .containsExactlyInAnyOrder("externalId", "merchantId", "currency", "amount", "requestedAt");
     }
 
     @Test

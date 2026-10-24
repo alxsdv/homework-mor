@@ -12,6 +12,7 @@ import org.example.jooq.tables.LedgerEntries;
 import org.example.jooq.tables.LedgerTransactions;
 import org.example.jooq.tables.Merchants;
 import org.example.jooq.tables.Payments;
+import org.example.jooq.tables.Payouts;
 import org.example.jooq.tables.Refunds;
 import org.jooq.Catalog;
 import org.jooq.Table;
@@ -58,6 +59,11 @@ public class Public extends SchemaImpl {
     public final Payments PAYMENTS = Payments.PAYMENTS;
 
     /**
+     * The table <code>public.payouts</code>.
+     */
+    public final Payouts PAYOUTS = Payouts.PAYOUTS;
+
+    /**
      * The table <code>public.refunds</code>.
      */
     public final Refunds REFUNDS = Refunds.REFUNDS;
@@ -83,6 +89,7 @@ public class Public extends SchemaImpl {
             LedgerTransactions.LEDGER_TRANSACTIONS,
             Merchants.MERCHANTS,
             Payments.PAYMENTS,
+            Payouts.PAYOUTS,
             Refunds.REFUNDS
         );
     }

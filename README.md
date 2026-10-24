@@ -44,8 +44,11 @@ The application exposes the following API methods:
 
 1. `POST /payments`: record a settled payment from the customer to a given merchant
 2. `POST /payments/{paymentId}/refund`: record a refund to a previously setlled payment, fully or partly
-3. `GET /merchants/{merchantId}/balances`: what are merchant's balances with the MoR (per currency)
+3. `GET /merchants/{merchantId}/balances`: what are merchant's balances with the MoR (per currency): available and pending payouts
 4. `GET /tax-statement`: how much does the MoR owe tax authorities (per country & currency)
+5. `POST /payouts`: request a payout of a merchant's available balance; the amount is held until the bank answers
+6. `POST /payouts/{payoutId}/settle`: record that the bank confirmed the payout
+7. `POST /payouts/{payoutId}/fail`: record that the bank rejected the payout; the held amount is released
 
 See the full API spec through the Swagger UI (^^)  
 More on the prepared scenarios for manual testing: [smoke-test-guide.md](smoke-test-guide.md)

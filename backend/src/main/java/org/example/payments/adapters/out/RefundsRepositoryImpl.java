@@ -8,6 +8,7 @@ import org.example.payments.core.domain.RefundId;
 import org.example.payments.core.ports.out.DuplicateRefundExternalIdException;
 import org.example.payments.core.ports.out.DuplicateRefundIdException;
 import org.example.payments.core.ports.out.RefundsRepository;
+import org.example.shared.persistence.UniqueViolations;
 import org.example.shared.utils.PublicIds;
 import org.jooq.DSLContext;
 import org.jooq.Field;

@@ -3,6 +3,7 @@ package org.example.ledger.core.services;
 import org.example.ledger.core.domain.AccountKey;
 import org.example.ledger.core.domain.LedgerEntry;
 import org.example.ledger.core.domain.LedgerTransaction;
+import org.example.ledger.core.ports.in.InsufficientFundsException;
 import org.example.ledger.core.ports.in.PostToLedgerUseCase;
 import org.example.ledger.core.ports.out.LedgerRepository;
 import org.example.ledger.core.ports.out.NewEntry;
@@ -31,13 +32,25 @@ public class PostToLedgerUseCaseImpl implements PostToLedgerUseCase {
         return id;
     }
 
+    private static BigDecimal sumFor(List<NewEntry> entries, long accountId) {
+        return entries.stream()
+                .filter(entry -> entry.accountId() == accountId)
+                .map(NewEntry::amount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
     @Override
     public void post(LedgerTransaction transaction) {
         // Explicit transaction: joins the payment's transaction when called from it.
-        transactionRunner.inTransaction(() -> postInCurrentTransaction(transaction));
+        transactionRunner.inTransaction(() -> postInCurrentTransaction(transaction, false));
     }
 
-    private void postInCurrentTransaction(LedgerTransaction transaction) {
+    @Override
+    public void postWithinAvailableFunds(LedgerTransaction transaction) {
+        transactionRunner.inTransaction(() -> postInCurrentTransaction(transaction, true));
+    }
+
+    private void postInCurrentTransaction(LedgerTransaction transaction, boolean checkFunds) {
         // Step 1 (backstop): LedgerTransaction's constructor already rejects unbalanced entries.
         if (LedgerTransaction.sum(transaction.entries()).signum() != 0) {
             throw new IllegalArgumentException("Ledger transaction " + transaction.sourceId() + " is not balanced");
@@ -50,32 +63,34 @@ public class PostToLedgerUseCaseImpl implements PostToLedgerUseCase {
                 accountIds.put(entry.account(), ledgerRepository.findOrCreateAccount(entry.account()));
             }
         }
-
-        // Step 3: lock the accounts with a cached balance, in ascending id order to rule out deadlocks.
-        List<Long> cachedAccountIds = accountIds.entrySet().stream()
-                .filter(entry -> entry.getKey().type().hasCachedBalance())
-                .map(Map.Entry::getValue)
-                .sorted()
+        List<NewEntry> newEntries = transaction.entries().stream()
+                .map(entry -> new NewEntry(accountIdOf(accountIds, entry.account()), entry.amount()))
                 .toList();
-        Map<Long, BigDecimal> lockedBalances = new LinkedHashMap<>();
-        for (Long accountId : cachedAccountIds) {
-            lockedBalances.put(accountId, ledgerRepository.lockCachedAccount(accountId));
+
+        // Step 3: lock the accounts with a cached balance, in ascending id order to rule out deadlocks, and work
+        // out their new balances. A funds check made here can't go stale: nothing else moves them until commit.
+        List<Map.Entry<AccountKey, Long>> cachedAccounts = accountIds.entrySet().stream()
+                .filter(entry -> entry.getKey().type().hasCachedBalance())
+                .sorted(Map.Entry.comparingByValue())
+                .toList();
+        Map<Long, BigDecimal> newBalances = new LinkedHashMap<>();
+        for (Map.Entry<AccountKey, Long> account : cachedAccounts) {
+            long accountId = account.getValue();
+            BigDecimal balance = ledgerRepository.lockCachedAccount(accountId);
+            BigDecimal delta = sumFor(newEntries, accountId);
+            BigDecimal newBalance = balance.add(delta);
+            // What we owe is stored negative, so a debit that leaves it above zero means the merchant owes us.
+            if (checkFunds && delta.signum() > 0 && newBalance.signum() > 0) {
+                throw new InsufficientFundsException(account.getKey(), balance.negate(), delta);
+            }
+            newBalances.put(accountId, newBalance);
         }
 
         // Step 4: write the transaction and its entries.
         long transactionId = ledgerRepository.insertTransaction(transaction);
-        List<NewEntry> newEntries = transaction.entries().stream()
-                .map(entry -> new NewEntry(accountIdOf(accountIds, entry.account()), entry.amount()))
-                .toList();
         ledgerRepository.insertEntries(transactionId, newEntries);
 
-        // Step 5: move each locked balance by the sum of its entries; safe because we hold the row lock.
-        lockedBalances.forEach((accountId, balance) -> {
-            BigDecimal delta = newEntries.stream()
-                    .filter(entry -> entry.accountId() == accountId)
-                    .map(NewEntry::amount)
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
-            ledgerRepository.updateBalance(accountId, balance.add(delta));
-        });
+        // Step 5: store the new balances; safe because we hold the row locks.
+        newBalances.forEach(ledgerRepository::updateBalance);
     }
 }

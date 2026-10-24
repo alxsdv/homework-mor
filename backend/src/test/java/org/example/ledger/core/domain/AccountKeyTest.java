@@ -17,6 +17,8 @@ class AccountKeyTest {
         assertThat(AccountKey.feeRevenue(EUR)).isEqualTo(new AccountKey(AccountType.FEE_REVENUE, EUR, null, null));
         assertThat(AccountKey.merchantPayable(EUR, "MERCH-001"))
                 .isEqualTo(new AccountKey(AccountType.MERCHANT_PAYABLE, EUR, "MERCH-001", null));
+        assertThat(AccountKey.merchantPayoutPending(EUR, "MERCH-001"))
+                .isEqualTo(new AccountKey(AccountType.MERCHANT_PAYOUT_PENDING, EUR, "MERCH-001", null));
         assertThat(AccountKey.taxPayable(EUR, "DE"))
                 .isEqualTo(new AccountKey(AccountType.TAX_PAYABLE, EUR, null, "DE"));
     }
@@ -31,6 +33,8 @@ class AccountKeyTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new AccountKey(AccountType.MERCHANT_PAYABLE, EUR, "MERCH-001", "DE"))
                 .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new AccountKey(AccountType.MERCHANT_PAYOUT_PENDING, EUR, null, null))
+                .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new AccountKey(AccountType.TAX_PAYABLE, EUR, null, null))
                 .isInstanceOf(IllegalArgumentException.class);
     }
@@ -38,6 +42,7 @@ class AccountKeyTest {
     @Test
     void onlyMerchantAccountsCacheTheirBalance() {
         assertThat(AccountType.MERCHANT_PAYABLE.hasCachedBalance()).isTrue();
+        assertThat(AccountType.MERCHANT_PAYOUT_PENDING.hasCachedBalance()).isFalse();
         assertThat(AccountType.CASH_CLEARING.hasCachedBalance()).isFalse();
         assertThat(AccountType.FEE_REVENUE.hasCachedBalance()).isFalse();
         assertThat(AccountType.TAX_PAYABLE.hasCachedBalance()).isFalse();

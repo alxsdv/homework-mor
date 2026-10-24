@@ -19,7 +19,7 @@ public class LedgerMerchantBalancesAdapter implements MerchantBalances {
     }
 
     private static MerchantBalance toMerchantBalance(MerchantPayable payable) {
-        return new MerchantBalance(payable.currency(), payable.payable());
+        return new MerchantBalance(payable.currency(), payable.available(), payable.pendingPayout());
     }
 
     @Override

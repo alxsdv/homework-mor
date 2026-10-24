@@ -12,6 +12,7 @@ import java.util.List;
 import org.example.jooq.Keys;
 import org.example.jooq.Public;
 import org.example.jooq.tables.Payments.PaymentsPath;
+import org.example.jooq.tables.Payouts.PayoutsPath;
 import org.example.jooq.tables.Refunds.RefundsPath;
 import org.example.jooq.tables.records.MerchantsRecord;
 import org.jooq.Check;
@@ -168,6 +169,19 @@ public class Merchants extends TableImpl<MerchantsRecord> {
             _payments = new PaymentsPath(this, null, Keys.PAYMENTS__PAYMENTS_MERCHANT_ID_FKEY.getInverseKey());
 
         return _payments;
+    }
+
+    private transient PayoutsPath _payouts;
+
+    /**
+     * Get the implicit to-many join path to the <code>public.payouts</code>
+     * table
+     */
+    public PayoutsPath payouts() {
+        if (_payouts == null)
+            _payouts = new PayoutsPath(this, null, Keys.PAYOUTS__PAYOUTS_MERCHANT_ID_FKEY.getInverseKey());
+
+        return _payouts;
     }
 
     private transient RefundsPath _refunds;

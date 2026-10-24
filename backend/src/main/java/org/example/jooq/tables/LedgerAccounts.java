@@ -188,7 +188,7 @@ public class LedgerAccounts extends TableImpl<LedgerAccountsRecord> {
     public List<Check<LedgerAccountsRecord>> getChecks() {
         return Arrays.asList(
             Internal.createCheck(this, DSL.name("ledger_accounts_cached_balance"), "(((balance IS NOT NULL) = (type = 'MERCHANT_PAYABLE'::text)))", true),
-            Internal.createCheck(this, DSL.name("ledger_accounts_key_parts"), "((((type = ANY (ARRAY['CASH_CLEARING'::text, 'FEE_REVENUE'::text])) AND (merchant_id IS NULL) AND (country_code IS NULL)) OR ((type = 'MERCHANT_PAYABLE'::text) AND (merchant_id IS NOT NULL) AND (country_code IS NULL)) OR ((type = 'TAX_PAYABLE'::text) AND (merchant_id IS NULL) AND (country_code IS NOT NULL))))", true)
+            Internal.createCheck(this, DSL.name("ledger_accounts_key_parts"), "((((type = ANY (ARRAY['CASH_CLEARING'::text, 'FEE_REVENUE'::text])) AND (merchant_id IS NULL) AND (country_code IS NULL)) OR ((type = ANY (ARRAY['MERCHANT_PAYABLE'::text, 'MERCHANT_PAYOUT_PENDING'::text])) AND (merchant_id IS NOT NULL) AND (country_code IS NULL)) OR ((type = 'TAX_PAYABLE'::text) AND (merchant_id IS NULL) AND (country_code IS NOT NULL))))", true)
         );
     }
 

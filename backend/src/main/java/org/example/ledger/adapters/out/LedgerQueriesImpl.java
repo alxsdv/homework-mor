@@ -1,5 +1,6 @@
 package org.example.ledger.adapters.out;
 
+import org.example.jooq.tables.LedgerAccounts;
 import org.example.ledger.core.domain.AccountType;
 import org.example.ledger.core.domain.MerchantPayable;
 import org.example.ledger.core.domain.TaxPayable;
@@ -18,6 +19,10 @@ import java.util.List;
 import static org.example.jooq.Tables.LEDGER_ACCOUNTS;
 import static org.example.jooq.Tables.LEDGER_ENTRIES;
 import static org.example.jooq.Tables.LEDGER_TRANSACTIONS;
+import static org.jooq.impl.DSL.coalesce;
+import static org.jooq.impl.DSL.field;
+import static org.jooq.impl.DSL.inline;
+import static org.jooq.impl.DSL.select;
 import static org.jooq.impl.DSL.sum;
 
 @Repository
@@ -37,16 +42,29 @@ public class LedgerQueriesImpl implements LedgerQueries {
         return balance.negate().setScale(currency.getDefaultFractionDigits(), RoundingMode.UNNECESSARY);
     }
 
+    /**
+     * Available is MERCHANT_PAYABLE's cached balance. Pending payouts keep no cached balance, so their entries are
+     * summed; a merchant only has a pending account in a currency they already have a payable account in.
+     */
     @Override
     public List<MerchantPayable> merchantPayables(String merchantId) {
-        return dsl.select(LEDGER_ACCOUNTS.CURRENCY, LEDGER_ACCOUNTS.BALANCE)
+        LedgerAccounts pendingAccount = LEDGER_ACCOUNTS.as("pending_account");
+        Field<BigDecimal> pending = field(
+                select(coalesce(sum(LEDGER_ENTRIES.AMOUNT), inline(BigDecimal.ZERO)))
+                        .from(LEDGER_ENTRIES)
+                        .join(pendingAccount).on(pendingAccount.ID.eq(LEDGER_ENTRIES.ACCOUNT_ID))
+                        .where(pendingAccount.TYPE.eq(AccountType.MERCHANT_PAYOUT_PENDING.name()))
+                        .and(pendingAccount.MERCHANT_ID.eq(LEDGER_ACCOUNTS.MERCHANT_ID))
+                        .and(pendingAccount.CURRENCY.eq(LEDGER_ACCOUNTS.CURRENCY)));
+        return dsl.select(LEDGER_ACCOUNTS.CURRENCY, LEDGER_ACCOUNTS.BALANCE, pending)
                 .from(LEDGER_ACCOUNTS)
                 .where(LEDGER_ACCOUNTS.TYPE.eq(AccountType.MERCHANT_PAYABLE.name()))
                 .and(LEDGER_ACCOUNTS.MERCHANT_ID.eq(merchantId))
                 .orderBy(LEDGER_ACCOUNTS.CURRENCY)
                 .fetch(record -> {
                     Currency currency = Currency.getInstance(record.value1());
-                    return new MerchantPayable(merchantId, currency, payable(record.value2(), currency));
+                    return new MerchantPayable(merchantId, currency, payable(record.value2(), currency),
+                                               payable(record.value3(), currency));
                 });
     }
 

@@ -453,11 +453,14 @@ Expect **200 OK** with one line per currency, because MERCH-001 was paid in EUR 
 {
   "merchantId": "MERCH-001",
   "balances": [
-    { "currency": "EUR", "payable": "48.50" },
-    { "currency": "USD", "payable": "97.00" }
+    { "currency": "EUR", "payable": "48.50", "available": "48.50", "pendingPayout": "0.00" },
+    { "currency": "USD", "payable": "97.00", "available": "97.00", "pendingPayout": "0.00" }
   ]
 }
 ```
+
+`payable` is everything we owe: `available` can be paid out now, `pendingPayout` is held for payouts in flight.
+With no payouts yet, everything is available. The table below shows `payable` only.
 
 The other two merchants:
 
