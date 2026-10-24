@@ -8,18 +8,19 @@
 - Testcontainers
 - NullAway, JSpecify
 - ArchUnit
+- OpenTelemetry Java agent + Grafana LGTM (traces, logs)
 
 ## How to build & run locally
 
 ```bash
 ./mvnw clean install                 # build backend/target/homework-backend-*.jar
-docker compose up -d --build         # start Postgres + app (rebuilds the app image)
+docker compose up -d --build         # start Postgres, app and Grafana (rebuilds the app image)
 docker compose logs -f app           # follow app logs; ready when "Started Application" appears
-docker compose ps                    # check both containers are up
+docker compose ps                    # check all containers are up
 ```
 
 ```bash
-docker compose down                  # stop, keep the database
+docker compose down                  # stop, keep the database (stored traces and logs are lost either way)
 docker compose down -v               # stop and wipe the database
 ```
 
@@ -35,7 +36,9 @@ After adding or changing a migration, regenerate them (requires Docker) and comm
 ## Testing the API
 
 Base URL: `http://localhost:8080`  
-Swagger UI: http://localhost:8080/swagger-ui.html
+Swagger UI: http://localhost:8080/swagger-ui.html  
+Grafana: http://localhost:3000 (Explore → Tempo for request traces; see
+[Tracing in the smoke-test guide](smoke-test-guide.md#5-tracing-follow-a-request-in-grafana))
 
 The application exposes the following API methods:
 

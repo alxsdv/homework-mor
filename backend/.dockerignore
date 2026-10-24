@@ -1,3 +1,4 @@
-# The image only needs the jar built by Maven.
+# The image only needs the jars built by Maven: the app and the OpenTelemetry agent.
 *
 !target/homework-backend-*.jar
+!target/opentelemetry-javaagent.jar
